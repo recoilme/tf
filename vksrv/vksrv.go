@@ -27,13 +27,14 @@ var (
 )
 
 func main() {
+	//botfile:= "telefeed.bot"
 	log.Println("main")
 	var err error
-	tlgrmtoken, err := ioutil.ReadFile("tokentg")
+	tlgrmtoken, err := ioutil.ReadFile(params.Telefeedfile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	writetoken, err := ioutil.ReadFile("vkwriter")
+	writetoken, err := ioutil.ReadFile(params.Vkwriterfile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -195,6 +196,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	if len(p.Attachments) == 0 || len(txt) > 250 {
 		msg := tgbotapi.NewMessage(vkcnt, txt)
 		msg.DisableWebPagePreview = true
+		msg.DisableNotification = true
 		res, err := wrbot.Send(msg)
 		if err == nil {
 			for user := range users {
@@ -218,6 +220,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				bb := tgbotapi.FileBytes{Name: photo, Bytes: b}
 				msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
 				msg.Caption = txt
+				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 				if err == nil {
 					for user := range users {
@@ -251,6 +254,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 						bb := tgbotapi.FileBytes{Name: s, Bytes: vidb}
 						msg := tgbotapi.NewVideoUpload(vkcnt, bb)
 						msg.Caption = txt
+						msg.DisableNotification = true
 						res, err := wrbot.Send(msg)
 						if err == nil {
 							for user := range users {
@@ -267,6 +271,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				bb := tgbotapi.FileBytes{Name: "tmp." + att.Doc.Ext, Bytes: b}
 				msg := tgbotapi.NewDocumentUpload(vkcnt, bb)
 				msg.Caption = txt
+				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 				if err == nil {
 					for user := range users {
@@ -283,14 +288,14 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				desc = att.Link.URL
 			}
 			msg := tgbotapi.NewMessage(vkcnt, desc)
+			msg.DisableWebPagePreview = true
+			msg.DisableNotification = true
 			res, err := wrbot.Send(msg)
 			if err == nil {
 				for user := range users {
-
 					bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
 				}
 			}
-
 		}
 	}
 

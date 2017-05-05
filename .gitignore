@@ -1,8 +1,9 @@
 .DS_Store
 boltsrv/bolt.db
 boltapi/bolt.db
-vkwriter
-tokentg
-vksrv/vkwriter
-vksrv/tokentg
-vksrv/vksrv
+
+tgsrv/telefeed.bot
+tgsrv/telefeedtst.bot
+vksrv/telefeed.bot
+vksrv/telefeedtst.bot
+vksrv/vkwriter.bot

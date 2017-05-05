@@ -27,7 +27,7 @@ func catch(e error) {
 
 func main() {
 	var err error
-	tlgrmtoken, err := ioutil.ReadFile("tokentg")
+	tlgrmtoken, err := ioutil.ReadFile(params.Telefeedfile)
 	catch(err)
 	tgtoken := strings.Replace(string(tlgrmtoken), "\n", "", -1)
 	bot, err = tgbotapi.NewBotAPI(tgtoken)
@@ -74,11 +74,16 @@ func userNew(user *tgbotapi.User) bool {
 
 func pubFind(msg *tgbotapi.Message, txt string) {
 	log.Println("pubFind")
+	var delete = false
 	words := strings.Split(txt, " ")
 	for i := range words {
 		word := words[i]
+		if word == "delete" {
+			delete = true
+		}
 		urls, err := url.Parse(word)
 		if err != nil {
+			bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+word+"'\n"+params.NotFound+params.Example))
 			return
 		}
 		switch urls.Host {
@@ -99,7 +104,7 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 							// save group to DB
 							if pubDbSet(groupVk) {
 								// new group set
-								pubSubTgAdd(groupVk, msg)
+								pubSubTgAdd(groupVk, msg, delete)
 							} else {
 								// group not set
 								bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Error create domain:'"+domain+"'"))
@@ -111,10 +116,12 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 
 					} else {
 						// public exists
-						pubSubTgAdd(groupDb, msg)
+						pubSubTgAdd(groupDb, msg, delete)
 					}
 				}
 			}
+		default:
+			bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+word+"'"+params.NotFound))
 		}
 	}
 }
@@ -139,26 +146,31 @@ func pubDbSet(group vkapi.Group) bool {
 	return httputils.HttpPut(params.Publics+domain, nil, b)
 }
 
-func pubSubTgAdd(group vkapi.Group, msg *tgbotapi.Message) {
+func pubSubTgAdd(group vkapi.Group, msg *tgbotapi.Message, isDelete bool) {
 
 	gid := strconv.Itoa(group.Gid)
 	url := params.Subs + gid
 	log.Println("pubSubTgAdd", url)
 	body := httputils.HttpGet(url, nil)
 
-	if body != nil {
-		users := make(map[int]bool)
-		json.Unmarshal(body, &users)
-		delete(users, msg.From.ID)
+	users := make(map[int]bool)
+	json.Unmarshal(body, &users)
+	delete(users, msg.From.ID)
+	if !isDelete {
 		users[msg.From.ID] = true
-		log.Println("pubSubTgAdd users ", users)
-		data, err := json.Marshal(users)
-		if err == nil {
-			log.Println("pubSubTgAdd data ", string(data))
-			result := httputils.HttpPut(url, nil, data)
-			if result == true {
-				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+group.ScreenName+"'\n"+params.Psst))
+	}
+	log.Println("pubSubTgAdd users ", users)
+	data, err := json.Marshal(users)
+	if err == nil {
+		log.Println("pubSubTgAdd data ", string(data))
+		result := httputils.HttpPut(url, nil, data)
+		if result == true {
+			isNew := "New"
+			if isDelete {
+				isNew = "Removed"
 			}
+			bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Wow! "+isNew+" domain: https://vk.com/"+group.ScreenName+"\n"+
+				params.Psst+"\n"+params.HowDelete))
 		}
 	}
 }
