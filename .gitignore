@@ -1,0 +1,6 @@
+.DS_Store
+boltsrv/bolt.db
+vkwriter
+tokentg
+vksrv/vkwriter
+vksrv/tokentg

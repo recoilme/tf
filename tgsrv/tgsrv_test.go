@@ -6,13 +6,13 @@ import (
 )
 
 func TestAverage(t *testing.T) {
-	groupName := "cook_good"
+	groupName := "myakotkapub"
 	group := pubDbGet(groupName)
 	//if group == nil {
-	log.Println("group1", group.ScreenName)
+	log.Println("group1", group)
 }
 
 func TestVkWallUpd(t *testing.T) {
 	log.Println("vkWallUpd")
-	vkWallUpd()
+	//vkapi.vkWallUpd()
 }

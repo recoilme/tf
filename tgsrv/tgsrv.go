@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/recoilme/httputils"
+	"github.com/recoilme/tf/httputils"
 	"github.com/recoilme/tf/vkapi"
 
 	"gopkg.in/telegram-bot-api.v4"
@@ -38,7 +38,7 @@ func catch(e error) {
 }
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	//log.SetOutput(ioutil.Discard)
 	http.DefaultClient.Transport = &http.Transport{
 		Dial: (&net.Dialer{
 			Timeout: 1 * time.Second,
