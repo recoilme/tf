@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/recoilme/httputils"
-	"github.com/recoilme/vkapi"
+	"github.com/recoilme/tf/vkapi"
 
 	"gopkg.in/telegram-bot-api.v4"
 )
