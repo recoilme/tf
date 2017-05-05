@@ -121,7 +121,9 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 				}
 			}
 		default:
-			bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+word+"'"+params.NotFound))
+			if !delete {
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+word+"'"+params.NotFound))
+			}
 		}
 	}
 }
