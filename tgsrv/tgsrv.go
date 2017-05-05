@@ -4,27 +4,15 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"net"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/recoilme/tf/httputils"
+	"github.com/recoilme/tf/params"
 	"github.com/recoilme/tf/vkapi"
 
 	"gopkg.in/telegram-bot-api.v4"
-)
-
-const (
-	api      = "http://badtobefat.ru/bolt"
-	users    = "/usertg/"
-	pubNames = "/pubNames/"
-	pubSubTg = "/pubSubTg/"
-	someErr  = "Something going wrong. Try later.. Ошибка, мать её!"
-	hello    = "🇬🇧 Send me links to public pages from vk.com, and I will send you new articles.\n🇷🇺 Отправь мне ссылки на общедоступные страницы c vk.com, и я буду присылать тебе новые статьи.\nExample: https://vk.com/myakotkapub\nContacts: @recoilme"
-	psst     = "🇬🇧 Psst. As soon as there are new articles here - I will immediately send them\n🇷🇺 Псст. Как только появятся новые статьи здесь -  я их сразу пришлю"
 )
 
 var (
@@ -34,19 +22,6 @@ var (
 func catch(e error) {
 	if e != nil {
 		log.Panic(e.Error)
-	}
-}
-
-func init() {
-	//log.SetOutput(ioutil.Discard)
-	http.DefaultClient.Transport = &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: 1 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: 1 * time.Second,
-	}
-	http.DefaultClient = &http.Client{
-		Timeout: time.Second * 10,
 	}
 }
 
@@ -78,9 +53,9 @@ func main() {
 		case "/start":
 			user := update.Message.From
 			if userNew(user) {
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, hello))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, params.Hello))
 			} else {
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, someErr))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, params.SomeErr))
 			}
 		default:
 			msg := update.Message.Text
@@ -91,7 +66,7 @@ func main() {
 }
 
 func userNew(user *tgbotapi.User) bool {
-	url := api + users + strconv.Itoa(user.ID)
+	url := params.Users + strconv.Itoa(user.ID)
 	log.Println("userNew", url)
 	b, _ := json.Marshal(user)
 	return httputils.HttpPut(url, nil, b)
@@ -146,7 +121,7 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 
 func pubDbGet(domain string) (group vkapi.Group) {
 	log.Println("pubDbGet")
-	url := api + pubNames + domain
+	url := params.Publics + domain
 	body := httputils.HttpGet(url, nil)
 	if body != nil {
 		json.Unmarshal(body, &group)
@@ -161,13 +136,13 @@ func pubDbSet(group vkapi.Group) bool {
 	if err != nil {
 		return false
 	}
-	return httputils.HttpPut(api+pubNames+domain, nil, b)
+	return httputils.HttpPut(params.Publics+domain, nil, b)
 }
 
 func pubSubTgAdd(group vkapi.Group, msg *tgbotapi.Message) {
 
 	gid := strconv.Itoa(group.Gid)
-	url := api + pubSubTg + gid
+	url := params.Subs + gid
 	log.Println("pubSubTgAdd", url)
 	body := httputils.HttpGet(url, nil)
 
@@ -182,7 +157,7 @@ func pubSubTgAdd(group vkapi.Group, msg *tgbotapi.Message) {
 			log.Println("pubSubTgAdd data ", string(data))
 			result := httputils.HttpPut(url, nil, data)
 			if result == true {
-				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+group.ScreenName+"'\n"+psst))
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+group.ScreenName+"'\n"+params.Psst))
 			}
 		}
 	}
