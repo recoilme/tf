@@ -167,12 +167,12 @@ func pubSubTgAdd(group vkapi.Group, msg *tgbotapi.Message, isDelete bool) {
 		log.Println("pubSubTgAdd data ", string(data))
 		result := httputils.HttpPut(url, nil, data)
 		if result == true {
-			isNew := "New"
 			if isDelete {
-				isNew = "Removed"
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Ups! Removed domain: https://vk.com/"+group.ScreenName+"\n"))
+			} else {
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Wow! New domain: https://vk.com/"+group.ScreenName+"\n"+
+					params.Psst+"\n"+params.HowDelete))
 			}
-			bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Wow! "+isNew+" domain: https://vk.com/"+group.ScreenName+"\n"+
-				params.Psst+"\n"+params.HowDelete))
 		}
 	}
 }
