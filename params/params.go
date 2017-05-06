@@ -8,6 +8,7 @@ import (
 const (
 	api = "http://badtobefat.ru/bolt"
 	//api          = "http://localhost:5000/bolt"
+	//Telefeedfile = "telefeedtst.bot"
 	Telefeedfile = "telefeed.bot"
 	Vkwriterfile = "vkwriter.bot"
 	users        = "/usertg/"

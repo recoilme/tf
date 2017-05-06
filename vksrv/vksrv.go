@@ -133,6 +133,7 @@ func saveposts(domain vkapi.Group, users map[int]bool) {
 	}
 }
 
+// for testing
 func getpost() (post vkapi.Post) {
 	postid := "126993367/0000001170"
 
@@ -191,10 +192,10 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	}
 	link := fmt.Sprintf("vk.com/wall%d_%d", domain.Gid*(-1), p.Id)
 	tag := strings.Replace(domain.ScreenName, ".", "", -1)
-	txt := fmt.Sprintf("%s#%s 🔗 %s", t, tag, link)
-	log.Println("txt:", txt)
-	if len(p.Attachments) == 0 || len(txt) > 250 {
-		msg := tgbotapi.NewMessage(vkcnt, txt)
+	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
+	if len(p.Attachments) == 0 || len(t) > 250 {
+		msg := tgbotapi.NewMessage(vkcnt, t+appendix)
+		t = ""
 		msg.DisableWebPagePreview = true
 		msg.DisableNotification = true
 		res, err := wrbot.Send(msg)
@@ -210,7 +211,13 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 		log.Println(att.Type)
 		switch att.Type {
 		case "photo":
-			var photo = att.Photo.Photo807
+			if att.Photo.Width < 100 {
+				continue
+			}
+			if att.Photo.Height < 100 {
+				continue
+			}
+			var photo = att.Photo.Photo1280
 			if photo == "" {
 				photo = att.Photo.Photo604
 			}
@@ -219,7 +226,11 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 			if b != nil {
 				bb := tgbotapi.FileBytes{Name: photo, Bytes: b}
 				msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
-				msg.Caption = txt
+				if i == 0 {
+					msg.Caption = t + appendix
+				} else {
+					msg.Caption = appendix
+				}
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 				if err == nil {
@@ -231,10 +242,20 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 			}
 		case "video":
 			//fmt.Printf("%+v\n", att.Video)
+			urlv := fmt.Sprintf("https://vk.com/video%d_%d", att.Video.OwnerID, att.Video.ID)
 			if att.Video.Duration > 600 {
+				//send url
+				msg := tgbotapi.NewMessage(vkcnt, urlv+"\n"+appendix)
+				msg.DisableWebPagePreview = false
+				msg.DisableNotification = true
+				res, err := wrbot.Send(msg)
+				if err == nil {
+					for user := range users {
+						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+					}
+				}
 				continue
 			}
-			urlv := fmt.Sprintf("https://vk.com/video%d_%d", att.Video.OwnerID, att.Video.ID)
 			b := httputils.HttpGet(urlv, nil)
 			if b != nil {
 				cnt := string(b)
@@ -253,7 +274,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 						vidb := httputils.HttpGet(s, nil)
 						bb := tgbotapi.FileBytes{Name: s, Bytes: vidb}
 						msg := tgbotapi.NewVideoUpload(vkcnt, bb)
-						msg.Caption = txt
+						msg.Caption = appendix
 						msg.DisableNotification = true
 						res, err := wrbot.Send(msg)
 						if err == nil {
@@ -270,7 +291,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 			if b != nil {
 				bb := tgbotapi.FileBytes{Name: "tmp." + att.Doc.Ext, Bytes: b}
 				msg := tgbotapi.NewDocumentUpload(vkcnt, bb)
-				msg.Caption = txt
+				msg.Caption = appendix
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 				if err == nil {
@@ -280,20 +301,36 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				}
 			}
 		case "link":
-			//fmt.Printf("%+v\n", att.Link)
-			var desc = ""
-			if len(txt) <= 250 {
-				desc = att.Link.URL + "\n" + txt
+
+			if att.Link.Photo.Photo604 != "" && att.Link.Photo.Width > 400 && att.Link.Photo.Height > 400 {
+				//link with photo
+				b := httputils.HttpGet(att.Link.Photo.Photo604, nil)
+				if b != nil {
+					bb := tgbotapi.FileBytes{Name: att.Link.Photo.Photo604, Bytes: b}
+					msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
+					msg.Caption = att.Link.Title + "\n" + att.Link.Description + "\n" + att.Link.URL + "\n" + appendix
+					msg.DisableNotification = true
+					res, err := wrbot.Send(msg)
+					if err == nil {
+						for user := range users {
+
+							bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+						}
+					}
+				}
+
 			} else {
-				desc = att.Link.URL
-			}
-			msg := tgbotapi.NewMessage(vkcnt, desc)
-			msg.DisableWebPagePreview = true
-			msg.DisableNotification = true
-			res, err := wrbot.Send(msg)
-			if err == nil {
-				for user := range users {
-					bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+				var desc = ""
+				desc = att.Link.Title + "\n" + att.Link.URL + "\n" + appendix
+
+				msg := tgbotapi.NewMessage(vkcnt, desc)
+				msg.DisableWebPagePreview = false
+				msg.DisableNotification = true
+				res, err := wrbot.Send(msg)
+				if err == nil {
+					for user := range users {
+						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+					}
 				}
 			}
 		}
