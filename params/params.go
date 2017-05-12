@@ -1,19 +1,25 @@
 package params
 
 const (
-	api = "http://badtobefat.ru/bolt"
-	//api          = "http://localhost:5000/bolt"
-	//Telefeedfile = "telefeedtst.bot"
-	Telefeedfile = "telefeed.bot"
+	//api = "http://badtobefat.ru/bolt"
+	api          = "http://localhost:5000/bolt"
+	Telefeedfile = "telefeedtst.bot"
+	//Telefeedfile = "telefeed.bot"
 	Vkwriterfile = "vkwriter.bot"
 	users        = "/usertg/"
 	pubNames     = "/pubNames/"
 	pubSubTg     = "/pubSubTg/"
+	feedSubTg    = "/feedSubTg/"
 	lastPost     = "/vkpublastpost/"
+	feeds        = "/feeds/"
+	links        = "/links/"
 	BaseUri      = api + "/"
 	Publics      = api + pubNames
+	Feeds        = api + feeds
+	Links        = api + links
 	Users        = api + users
 	Subs         = api + pubSubTg
+	FeedSubs     = api + feedSubTg
 	LastPost     = api + lastPost
 	Example      = "\nExample: \nhttps://vk.com/myakotkapub\n"
 	SomeErr      = "🇬🇧 Something going wrong. Try later.. 🇷🇺 Ошибка, мать её!"

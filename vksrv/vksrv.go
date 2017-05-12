@@ -117,7 +117,7 @@ func saveposts(domain vkapi.Group, users map[int]bool) {
 	log.Println(domain)
 	var lastPost = lastPostIdGet(domain)
 	log.Println("last", lastPost)
-	posts := vkapi.WallGet(domain.ScreenName)
+	posts := vkapi.WallGet(domain.Gid * (-1))
 	last := len(posts) - 1
 	for i := range posts {
 		post := posts[last-i]

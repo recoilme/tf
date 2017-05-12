@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -8,6 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/net/html"
+	"golang.org/x/net/publicsuffix"
+
+	"github.com/mmcdole/gofeed"
 	"github.com/recoilme/tf/httputils"
 	"github.com/recoilme/tf/params"
 	"github.com/recoilme/tf/vkapi"
@@ -33,7 +40,7 @@ func main() {
 	bot, err = tgbotapi.NewBotAPI(tgtoken)
 	catch(err)
 
-	bot.Debug = true
+	bot.Debug = false
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 	u := tgbotapi.NewUpdate(0)
@@ -77,16 +84,23 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 	var delete = false
 	words := strings.Split(txt, " ")
 	for i := range words {
-		word := words[i]
+		var word = words[i]
 		if word == "delete" {
 			delete = true
+			continue
+		}
+		if strings.HasPrefix(word, "http") == false {
+			//default sheme is https
+			word = "https://" + word
 		}
 		urls, err := url.Parse(word)
 		if err != nil {
 			bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+word+"'\n"+params.NotFound+params.Example))
 			return
 		}
-		switch urls.Host {
+		mainDomain, _ := publicsuffix.EffectiveTLDPlusOne(urls.Host)
+
+		switch mainDomain {
 		case "vk.com":
 			parts := strings.Split(urls.Path, "/")
 			for j := range parts {
@@ -121,11 +135,77 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 				}
 			}
 		default:
-			if !delete {
-				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain:'"+word+"'"+params.NotFound))
+			log.Println("word", word)
+			var feedlink = getFeedLink(word)
+			if feedlink == "" {
+				log.Println("feedlink", feedlink)
+				rss := rssExtract(word)
+				if rss != "" {
+					log.Println("rss", rss)
+					feedlink = getFeedLink(rss)
+					log.Println("feedlink", feedlink)
+				}
+			}
+			if feedlink != "" {
+				feedkey := GetMD5Hash(feedlink)
+				//create feed or overwrite
+				httputils.HttpPut(params.Feeds+feedkey, nil, []byte(feedlink))
+				feedSubTgAdd(feedlink, msg, delete)
+			} else {
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain: "+word+"\n"+params.NotFound))
 			}
 		}
 	}
+}
+
+func feedSubTgAdd(feedlink string, msg *tgbotapi.Message, isDelete bool) {
+	url := params.FeedSubs + GetMD5Hash(feedlink)
+	log.Println("feedSubTgAdd", url)
+	body := httputils.HttpGet(url, nil)
+	users := make(map[int]bool)
+	json.Unmarshal(body, &users)
+	delete(users, msg.From.ID)
+	if !isDelete {
+		users[msg.From.ID] = true
+	}
+	log.Println("feedSubTgAdd users ", users)
+	data, err := json.Marshal(users)
+	if err == nil {
+		log.Println("feedSubTgAdd data ", string(data))
+		result := httputils.HttpPut(url, nil, data)
+		if result == true {
+			if isDelete {
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Ups! Removed domain: "+feedlink+"\n"))
+			} else {
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Wow! New domain: "+feedlink+"\n"+
+					params.Psst+"\n"+params.HowDelete))
+			}
+		}
+	}
+}
+
+func GetMD5Hash(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
+}
+
+func getFeedLink(link string) (feedlink string) {
+	var defHeaders = make(map[string]string)
+	defHeaders["User-Agent"] = "script::recoilme:v1"
+	defHeaders["Authorization"] = "Client-ID 4191ffe3736cfcb"
+	b := httputils.HttpGet(link, defHeaders)
+	if b == nil {
+		return feedlink
+	}
+	fp := gofeed.NewParser()
+	feed, err := fp.Parse(bytes.NewReader(b))
+	if err != nil {
+		return feedlink
+	}
+	if len(feed.Items) > 0 {
+		feedlink = link
+	}
+	return feedlink
 }
 
 func pubDbGet(domain string) (group vkapi.Group) {
@@ -175,4 +255,50 @@ func pubSubTgAdd(group vkapi.Group, msg *tgbotapi.Message, isDelete bool) {
 			}
 		}
 	}
+}
+
+func rssExtract(link string) string {
+	var rss string
+	var defHeaders = make(map[string]string)
+	defHeaders["User-Agent"] = "script::recoilme:v1"
+	defHeaders["Authorization"] = "Client-ID 4191ffe3736cfcb"
+	b := httputils.HttpGet(link, defHeaders)
+	if b == nil {
+		return rss
+	}
+	//s := `<link rel="alternate" type="application/rss+xml" href="https://vc.ru/feed">`
+	doc, err := html.Parse(bytes.NewReader(b)) //strings.NewReader(s))
+	if err != nil {
+		log.Fatal(err)
+	}
+	var f func(*html.Node)
+	f = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "link" {
+			var isRss bool
+			for _, a := range n.Attr {
+				if a.Key == "type" {
+					if a.Val == "application/rss+xml" || a.Val == "application/atom+xml" {
+						isRss = true
+						break
+					}
+				}
+			}
+			if isRss {
+				for _, a := range n.Attr {
+					if a.Key == "href" {
+						rss = a.Val
+						break
+					}
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
+			if rss != "" {
+				break
+			}
+		}
+	}
+	f(doc)
+	return rss
 }
