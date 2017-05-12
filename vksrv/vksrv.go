@@ -130,6 +130,7 @@ func saveposts(domain vkapi.Group, users map[int]bool) {
 		httputils.HttpPut(url, nil, b)
 		log.Println(post.Id)
 		pubpost(domain, post, users)
+		break
 	}
 }
 

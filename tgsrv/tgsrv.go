@@ -64,6 +64,23 @@ func main() {
 			} else {
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, params.SomeErr))
 			}
+		case "/help":
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "http://telegra.ph/telefeedbot-05-12"))
+		case "/list":
+			subs := usersub("", update.Message.From.ID, true)
+			var s string
+			for k, _ := range subs {
+				if strings.Contains(k, params.Publics) {
+					s = s + "\n" + "https://vk.com/" + strings.Replace(k, params.Publics, "", -1)
+				}
+				if strings.Contains(k, params.Feeds) {
+					b := httputils.HttpGet(k, nil)
+					if b != nil {
+						s = s + "\n" + string(b)
+					}
+				}
+			}
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, s))
 		default:
 			msg := update.Message.Text
 			pubFind(update.Message, msg)
@@ -76,6 +93,7 @@ func userNew(user *tgbotapi.User) bool {
 	url := params.Users + strconv.Itoa(user.ID)
 	log.Println("userNew", url)
 	b, _ := json.Marshal(user)
+	httputils.HttpPut(params.UserName+user.UserName, nil, b)
 	return httputils.HttpPut(url, nil, b)
 }
 
@@ -169,6 +187,10 @@ func feedSubTgAdd(feedlink string, msg *tgbotapi.Message, isDelete bool) {
 		users[msg.From.ID] = true
 	}
 	log.Println("feedSubTgAdd users ", users)
+
+	//user subs
+	usersub(params.Feeds+GetMD5Hash(feedlink), msg.From.ID, isDelete)
+
 	data, err := json.Marshal(users)
 	if err == nil {
 		log.Println("feedSubTgAdd data ", string(data))
@@ -178,10 +200,27 @@ func feedSubTgAdd(feedlink string, msg *tgbotapi.Message, isDelete bool) {
 				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Ups! Removed domain: "+feedlink+"\n"))
 			} else {
 				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Wow! New domain: "+feedlink+"\n"+
-					params.Psst+"\n"+params.HowDelete))
+					params.Psst))
 			}
 		}
 	}
+}
+
+func usersub(url string, userid int, isDelete bool) map[string]bool {
+	suburl := params.UserSubs + strconv.Itoa(userid)
+	bodysub := httputils.HttpGet(suburl, nil)
+	subs := make(map[string]bool)
+	json.Unmarshal(bodysub, &subs)
+	delete(subs, url)
+	if !isDelete {
+		subs[url] = true
+	}
+	if url == "" {
+		return subs
+	}
+	bsubs, _ := json.Marshal(subs)
+	httputils.HttpPut(suburl, nil, bsubs)
+	return subs
 }
 
 func GetMD5Hash(text string) string {
@@ -251,8 +290,10 @@ func pubSubTgAdd(group vkapi.Group, msg *tgbotapi.Message, isDelete bool) {
 				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Ups! Removed domain: https://vk.com/"+group.ScreenName+"\n"))
 			} else {
 				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Wow! New domain: https://vk.com/"+group.ScreenName+"\n"+
-					params.Psst+"\n"+params.HowDelete))
+					params.Psst))
 			}
+			//user subs
+			usersub(params.Publics+group.ScreenName, msg.From.ID, isDelete)
 		}
 	}
 }

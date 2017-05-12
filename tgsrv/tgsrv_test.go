@@ -110,3 +110,10 @@ func TestRssExtract(t *testing.T) {
 		t.Error("Expected got", link)
 	}
 }
+
+func TestSubs(t *testing.T) {
+	subs := usersub("", 1263310, true)
+	for k, v := range subs {
+		log.Println("k", k, "v", v)
+	}
+}
