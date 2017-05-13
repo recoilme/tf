@@ -128,31 +128,6 @@ func saveposts(link string, users map[int]bool) {
 	}
 }
 
-func rssdomains() map[string]string {
-	domains := make(map[string]string)
-	url := params.BaseUri + "feeds/Last?cnt=1000000&order=desc&vals=false"
-	log.Println("rssdomains", url)
-	resp, err := http.Post(url, "application/json", nil)
-	if err == nil {
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			var keys = make([]string, 500)
-			json.Unmarshal(body, &keys)
-
-			log.Println("keys", keys)
-			for _, key := range keys {
-				log.Println("key", key)
-				b := httputils.HttpGet(params.Feeds+key, nil)
-				if b != nil {
-					domains[key] = string(b)
-				}
-			}
-		}
-	}
-	return domains
-}
-
 func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	var vkcnt int64 = -1001067277325 //myakotka
 	log.Println("pubpost", p.GUID)
