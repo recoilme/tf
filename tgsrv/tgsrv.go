@@ -71,12 +71,12 @@ func main() {
 			var s string
 			for k, _ := range subs {
 				if strings.Contains(k, params.Publics) {
-					s = s + "\n" + "https://vk.com/" + strings.Replace(k, params.Publics, "", -1)
+					s = s + "\ndelete https://vk.com/" + strings.Replace(k, params.Publics, "", -1)
 				}
 				if strings.Contains(k, params.Feeds) {
 					b := httputils.HttpGet(k, nil)
 					if b != nil {
-						s = s + "\n" + string(b)
+						s = s + "\ndelete " + string(b)
 					}
 				}
 			}

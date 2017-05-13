@@ -1,11 +1,18 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/recoilme/tf/httputils"
+	"github.com/recoilme/tf/params"
+	"github.com/recoilme/tf/vkapi"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/publicsuffix"
@@ -33,7 +40,7 @@ func TestLinkExtract(t *testing.T) {
 		return
 	}
 	s := string(b)
-	log.Println(s)
+	//log.Println(s)
 	var rss string
 	//s := `<link rel="alternate" type="application/rss+xml" href="https://vc.ru/feed">`
 	doc, err := html.Parse(strings.NewReader(s))
@@ -116,4 +123,114 @@ func TestSubs(t *testing.T) {
 	for k, v := range subs {
 		log.Println("k", k, "v", v)
 	}
+}
+
+func TestMigrate(t *testing.T) {
+	migrate := true
+	if migrate == false {
+		return
+	}
+	//get publics
+
+	domains := vkdomains()
+	for i := range domains {
+		domain := domains[i]
+		log.Println(domain.ScreenName)
+		users := domUsers(domains[i])
+		for user := range users {
+			log.Println(user, domain.ScreenName)
+			usersub(params.Publics+domain.ScreenName, user, false)
+		}
+		time.Sleep(1 * time.Second)
+		//break
+	}
+
+	//get feeds
+	rsss := rssdomains()
+	for hash, feedlink := range rsss {
+
+		log.Println(hash, "::", feedlink)
+		users := domUsersRss(hash)
+		for user := range users {
+			//log.Println(user, ":", feedlink)
+			usersub(params.Feeds+GetMD5Hash(feedlink), user, false)
+		}
+		//time.Sleep(1 * time.Second)
+	}
+}
+
+func domUsersRss(hash string) (users map[int]bool) {
+	mask := params.FeedSubs + "%s"
+	url := fmt.Sprintf(mask, hash)
+	log.Println(url)
+	b := httputils.HttpGet(url, nil)
+	if b != nil {
+		json.Unmarshal(b, &users)
+	}
+	return users
+}
+
+func rssdomains() map[string]string {
+	domains := make(map[string]string)
+	url := params.BaseUri + "feeds/Last?cnt=1000000&order=desc&vals=false"
+	log.Println("rssdomains", url)
+	resp, err := http.Post(url, "application/json", nil)
+	if err == nil {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err == nil {
+			var keys = make([]string, 0)
+			json.Unmarshal(body, &keys)
+
+			log.Println("keys", keys)
+			for _, key := range keys {
+				log.Println("key", key)
+				b := httputils.HttpGet(params.Feeds+key, nil)
+				if b != nil {
+					domains[key] = string(b)
+				}
+			}
+		}
+	}
+	return domains
+}
+
+func domUsers(domain vkapi.Group) (users map[int]bool) {
+	mask := params.Subs + "%d"
+	url := fmt.Sprintf(mask, domain.Gid)
+	log.Println(url)
+	b := httputils.HttpGet(url, nil)
+	if b != nil {
+		json.Unmarshal(b, &users)
+	}
+	return users
+}
+
+func vkdomains() (domains []vkapi.Group) {
+	var domainNames []string
+	url := params.BaseUri + "pubNames/Last?cnt=1000000&order=desc&vals=false"
+	log.Println("vkdomains", url)
+	resp, err := http.Post(url, "application/json", nil)
+	if err == nil {
+		defer resp.Body.Close()
+		body, _ := ioutil.ReadAll(resp.Body)
+		err := json.Unmarshal(body, &domainNames)
+		if err == nil {
+			for i := range domainNames {
+				domainName := domainNames[i]
+				//log.Println("domainName", domainName)
+				b := httputils.HttpGet(params.Publics+domainName, nil)
+				if b != nil {
+					var domain vkapi.Group
+					err := json.Unmarshal(b, &domain)
+					if err == nil {
+						domains = append(domains, domain)
+					}
+				}
+			}
+		} else {
+			log.Println(err)
+		}
+	}
+	return
 }

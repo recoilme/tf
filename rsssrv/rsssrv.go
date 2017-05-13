@@ -17,7 +17,6 @@ import (
 	"github.com/mmcdole/gofeed"
 	"github.com/recoilme/tf/httputils"
 	"github.com/recoilme/tf/params"
-	"github.com/recoilme/tf/vkapi"
 )
 
 const (
@@ -88,35 +87,6 @@ func domUsers(hash string) (users map[int]bool) {
 	return users
 }
 
-func lastPostIdGet(domain vkapi.Group) int {
-	postId := MinInt
-	mask := params.LastPost + "%d"
-	url := fmt.Sprintf(mask, domain.Gid)
-	b := httputils.HttpGet(url, nil)
-	if b != nil {
-		json.Unmarshal(b, &postId)
-	}
-	return postId
-}
-
-func lastPostIdSet(domain vkapi.Group, lastPostId int) int {
-	postId := MinInt
-	mask := params.LastPost + "%d"
-	url := fmt.Sprintf(mask, domain.Gid)
-	b, err := json.Marshal(lastPostId)
-	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(b))
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err == nil {
-		defer resp.Body.Close()
-		postId = lastPostId
-	} else {
-		log.Println(err)
-	}
-	return postId
-}
-
 func GetMD5Hash(text string) string {
 	hash := md5.Sum([]byte(text))
 	return hex.EncodeToString(hash[:])
@@ -156,6 +126,31 @@ func saveposts(link string, users map[int]bool) {
 		pubpost(link, item, users)
 		break
 	}
+}
+
+func rssdomains() map[string]string {
+	domains := make(map[string]string)
+	url := params.BaseUri + "feeds/Last?cnt=1000000&order=desc&vals=false"
+	log.Println("rssdomains", url)
+	resp, err := http.Post(url, "application/json", nil)
+	if err == nil {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err == nil {
+			var keys = make([]string, 500)
+			json.Unmarshal(body, &keys)
+
+			log.Println("keys", keys)
+			for _, key := range keys {
+				log.Println("key", key)
+				b := httputils.HttpGet(params.Feeds+key, nil)
+				if b != nil {
+					domains[key] = string(b)
+				}
+			}
+		}
+	}
+	return domains
 }
 
 func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
