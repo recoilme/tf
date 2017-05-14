@@ -129,6 +129,8 @@ func saveposts(link string, users map[int]bool) {
 }
 
 func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
+	fmt.Printf("%+v\n", p)
+	//Title:Редизайн Windows, контроллеры смешанной реальности и новые средства для разработчиков Description:5 примечательных анонсов с конференции Microsoft Build 2017. <img src="https://png.cmtt.space/paper-preview-fox/m/ic/microsoft-build-announcements/8d1c780b2eba-original.jpg">
 	var vkcnt int64 = -1001067277325 //myakotka
 	log.Println("pubpost", p.GUID)
 	msg := tgbotapi.NewMessage(vkcnt, p.Link)

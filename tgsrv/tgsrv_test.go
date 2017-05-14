@@ -126,7 +126,7 @@ func TestSubs(t *testing.T) {
 }
 
 func TestMigrate(t *testing.T) {
-	migrate := true
+	migrate := false
 	if migrate == false {
 		return
 	}
