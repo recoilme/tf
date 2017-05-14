@@ -50,7 +50,7 @@ func main() {
 		log.Fatal(err)
 	}
 	wrbot, err = tgbotapi.NewBotAPI(wrtoken)
-	wrbot.Debug = true
+	wrbot.Debug = false
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func parseRss() {
 		users := domUsers(hash)
 		saveposts(url, users)
 		time.Sleep(1 * time.Second)
-		break
+
 	}
 }
 
@@ -118,6 +118,9 @@ func saveposts(link string, users map[int]bool) {
 		last = 10
 	}
 	for i := range feed.Items {
+		if i == last {
+			break
+		}
 		item := feed.Items[last-i]
 
 		log.Println(item.Link)
@@ -142,8 +145,9 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	var vkcnt int64 = -1001067277325 //myakotka
 	log.Println("pubpost", p.GUID)
 
-	var content = p.Title + p.Content
+	var content = p.Title + p.Description + p.Content
 	var links = extractLinks(content)
+	log.Println("lin1", links)
 	if p.Enclosures != nil {
 		for _, encl := range p.Enclosures {
 			links = append(links, encl.URL)
@@ -160,24 +164,34 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 		if len > max {
 			max = len
 			photo = img
+			log.Println("photo", photo, "len", len)
 		}
 	}
-	if photo != "" {
+	log.Println("phot:", photo)
+	if photo != "" && len(p.Title) > 3 && len(p.Title) < 200 {
 		b := httputils.HttpGet(photo, nil)
 		if b != nil {
-			var title = p.Title
-			if len(title) > 100 {
-				title = title[:97] + "..."
+			var caption = p.Title
+			appendix := fmt.Sprintf("\n🔗 %s", p.Link)
+			var maxlen = 248 - len(caption) - len(appendix)
+			words := strings.Split(p.Description, " ")
+			for i, word := range words {
+				if i == 0 {
+					caption = caption + "\n"
+				}
+				if len(word) < maxlen {
+					maxlen = maxlen - len(word) - 1
+					caption = caption + word + " "
+				} else {
+					caption = caption + ".."
+					break
+				}
 			}
-			var desc = p.Description
-			if len(desc) > 80 {
-				desc = desc[:80] + "..."
-			}
-			appendix := fmt.Sprintf("%s\n%s\n🔗 %s", title, desc, p.Link)
-			log.Println("app:", appendix)
+			caption = caption + appendix
+
 			bb := tgbotapi.FileBytes{Name: photo, Bytes: b}
 			msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
-			msg.Caption = appendix
+			msg.Caption = caption
 			msg.DisableNotification = true
 			res, err := wrbot.Send(msg)
 			if err == nil {
@@ -241,15 +255,18 @@ func extractLinks(s string) (links []string) {
 	z := html.NewTokenizer(strings.NewReader(s))
 	for {
 		tt := z.Next()
-
+		//log.Println("tt", tt)
 		switch {
 		case tt == html.ErrorToken:
 			// End of the document, we're done
+			log.Println("err tok")
 			return
-		case tt == html.StartTagToken:
+		case tt == html.StartTagToken || tt == html.SelfClosingTagToken:
 			t := z.Token()
+			//log.Println("t", t)
 			switch t.Data {
 			case "img":
+				//log.Println("img")
 				ok, href := getVal(t, "src")
 				if !ok {
 					continue
@@ -263,6 +280,7 @@ func extractLinks(s string) (links []string) {
 				}
 				links = append(links, href)
 			default:
+				//		log.Println("t.data", t.Data)
 				continue
 			}
 		}
@@ -278,7 +296,7 @@ func getImgs(links []string) (imgs map[string]int) {
 		}
 		len, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
 		// 10 - 500kb~
-		if len < 10000 || len > 500000 {
+		if len < 10000 || len > 1000000 {
 			continue
 		}
 		isImg := strings.HasPrefix(resp.Header.Get("Content-Type"), "image")
