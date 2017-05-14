@@ -9,7 +9,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
+
+	"golang.org/x/net/html"
 
 	"strings"
 
@@ -52,8 +55,9 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("%v+\n", time.Now())
-	go forever()
-	select {} // block forever
+	//go forever()
+	parseRss()
+	//select {} // block forever
 }
 
 func forever() {
@@ -73,6 +77,7 @@ func parseRss() {
 		users := domUsers(hash)
 		saveposts(url, users)
 		time.Sleep(1 * time.Second)
+		break
 	}
 }
 
@@ -108,9 +113,13 @@ func saveposts(link string, users map[int]bool) {
 		return
 	}
 
-	last := len(feed.Items) - 1
+	var last = len(feed.Items) - 1
+	if last > 10 {
+		last = 10
+	}
 	for i := range feed.Items {
 		item := feed.Items[last-i]
+
 		log.Println(item.Link)
 		key := GetMD5Hash(item.Link)
 		body := httputils.HttpGet(params.Links+key, nil)
@@ -130,17 +139,64 @@ func saveposts(link string, users map[int]bool) {
 
 func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	fmt.Printf("%+v\n", p)
-	//Title:Редизайн Windows, контроллеры смешанной реальности и новые средства для разработчиков Description:5 примечательных анонсов с конференции Microsoft Build 2017. <img src="https://png.cmtt.space/paper-preview-fox/m/ic/microsoft-build-announcements/8d1c780b2eba-original.jpg">
 	var vkcnt int64 = -1001067277325 //myakotka
 	log.Println("pubpost", p.GUID)
-	msg := tgbotapi.NewMessage(vkcnt, p.Link)
-	msg.DisableWebPagePreview = false
-	msg.DisableNotification = true
-	res, err := wrbot.Send(msg)
-	if err == nil {
-		for user := range users {
-			log.Println(user)
-			bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+
+	var content = p.Title + p.Content
+	var links = extractLinks(content)
+	if p.Enclosures != nil {
+		for _, encl := range p.Enclosures {
+			links = append(links, encl.URL)
+		}
+	}
+	if p.Image != nil {
+		links = append(links, p.Image.URL)
+	}
+	links = append(links, p.Link)
+	imgs := getImgs(links)
+	var max = 0
+	var photo = ""
+	for img, len := range imgs {
+		if len > max {
+			max = len
+			photo = img
+		}
+	}
+	if photo != "" {
+		b := httputils.HttpGet(photo, nil)
+		if b != nil {
+			var title = p.Title
+			if len(title) > 100 {
+				title = title[:97] + "..."
+			}
+			var desc = p.Description
+			if len(desc) > 80 {
+				desc = desc[:80] + "..."
+			}
+			appendix := fmt.Sprintf("%s\n%s\n🔗 %s", title, desc, p.Link)
+			log.Println("app:", appendix)
+			bb := tgbotapi.FileBytes{Name: photo, Bytes: b}
+			msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
+			msg.Caption = appendix
+			msg.DisableNotification = true
+			res, err := wrbot.Send(msg)
+			if err == nil {
+				for user := range users {
+
+					bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+				}
+			}
+		}
+	} else {
+		msg := tgbotapi.NewMessage(vkcnt, p.Link)
+		msg.DisableWebPagePreview = false
+		msg.DisableNotification = true
+		res, err := wrbot.Send(msg)
+		if err == nil {
+			for user := range users {
+				log.Println(user)
+				bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+			}
 		}
 	}
 }
@@ -168,4 +224,67 @@ func rssdomains() map[string]string {
 		}
 	}
 	return domains
+}
+
+func getVal(t html.Token, key string) (ok bool, val string) {
+	// Iterate over all of the Token's attributes until we find an "href"
+	for _, a := range t.Attr {
+		if a.Key == key {
+			val = a.Val
+			ok = true
+		}
+	}
+	return
+}
+
+func extractLinks(s string) (links []string) {
+	z := html.NewTokenizer(strings.NewReader(s))
+	for {
+		tt := z.Next()
+
+		switch {
+		case tt == html.ErrorToken:
+			// End of the document, we're done
+			return
+		case tt == html.StartTagToken:
+			t := z.Token()
+			switch t.Data {
+			case "img":
+				ok, href := getVal(t, "src")
+				if !ok {
+					continue
+				}
+				links = append(links, href)
+				//log.Println(href)
+			case "a":
+				ok, href := getVal(t, "href")
+				if !ok {
+					continue
+				}
+				links = append(links, href)
+			default:
+				continue
+			}
+		}
+	}
+}
+
+func getImgs(links []string) (imgs map[string]int) {
+	imgs = make(map[string]int)
+	for _, link := range links {
+		resp, err := http.Head(link)
+		if err != nil {
+			continue
+		}
+		len, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
+		// 10 - 500kb~
+		if len < 10000 || len > 500000 {
+			continue
+		}
+		isImg := strings.HasPrefix(resp.Header.Get("Content-Type"), "image")
+		if isImg {
+			imgs[link] = len
+		}
+	}
+	return imgs
 }
