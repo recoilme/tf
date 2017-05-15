@@ -1,10 +1,15 @@
 package params
 
+import (
+	"io/ioutil"
+	"log"
+)
+
 const (
-	//api = "http://badtobefat.ru/bolt"
-	api          = "http://localhost:5000/bolt"
-	Telefeedfile = "telefeedtst.bot"
-	//Telefeedfile = "telefeed.bot"
+	api = "http://badtobefat.ru/bolt"
+	//api          = "http://localhost:5000/bolt"
+	//Telefeedfile = "telefeedtst.bot"
+	Telefeedfile = "telefeed.bot"
 	Vkwriterfile = "vkwriter.bot"
 	users        = "/usertg/"
 	pubNames     = "/pubNames/"
@@ -35,5 +40,5 @@ const (
 )
 
 func init() {
-	//log.SetOutput(ioutil.Discard)
+	log.SetOutput(ioutil.Discard)
 }
