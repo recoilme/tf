@@ -11,16 +11,49 @@ import (
 
 var defHeaders = make(map[string]string)
 
+type Config struct {
+	ConnectTimeout   time.Duration
+	ReadWriteTimeout time.Duration
+}
+
+func TimeoutDialer(config *Config) func(net, addr string) (c net.Conn, err error) {
+	return func(netw, addr string) (net.Conn, error) {
+		conn, err := net.DialTimeout(netw, addr, config.ConnectTimeout)
+		if err != nil {
+			return nil, err
+		}
+		conn.SetDeadline(time.Now().Add(config.ReadWriteTimeout))
+		return conn, nil
+	}
+}
+
+func NewTimeoutClient(args ...interface{}) *http.Client {
+	// Default configuration
+	config := &Config{
+		ConnectTimeout:   5 * time.Second,
+		ReadWriteTimeout: 5 * time.Second,
+	}
+
+	// merge the default with user input if there is one
+	if len(args) == 1 {
+		timeout := args[0].(time.Duration)
+		config.ConnectTimeout = timeout
+		config.ReadWriteTimeout = timeout
+	}
+
+	if len(args) == 2 {
+		config.ConnectTimeout = args[0].(time.Duration)
+		config.ReadWriteTimeout = args[1].(time.Duration)
+	}
+
+	return &http.Client{
+		Transport: &http.Transport{
+			Dial: TimeoutDialer(config),
+		},
+	}
+}
+
 func init() {
-	http.DefaultClient.Transport = &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: 1 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: 1 * time.Second,
-	}
-	http.DefaultClient = &http.Client{
-		Timeout: time.Second * 10,
-	}
 	defHeaders["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:52.0) Gecko/20100101 Firefox/52.0"
 	defHeaders["Accept-Language"] = "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3"
 	defHeaders["Referer"] = "https://ya.ru/"
@@ -29,8 +62,9 @@ func init() {
 
 // HttpGet create request with default headers + custom headers
 func HttpGet(url string, headers map[string]string) []byte {
-	log.Println("httpGet", url)
-	client := &http.Client{}
+	//log.Println("httpGet", url)
+
+	client := NewTimeoutClient()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Println(err)
@@ -64,7 +98,7 @@ func HttpGet(url string, headers map[string]string) []byte {
 // HttpPut create request with default headers + custom headers
 func HttpPut(url string, headers map[string]string, b []byte) (result bool) {
 	log.Println("httpPut", url)
-	client := &http.Client{}
+	client := NewTimeoutClient()
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(b))
 	if err != nil {
 		log.Println(err)

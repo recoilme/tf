@@ -68,7 +68,9 @@ func parseVk() {
 		domain := domains[i]
 		log.Println(domain.ScreenName)
 		users := domUsers(domains[i])
-		saveposts(domain, users)
+		if len(users) > 0 {
+			saveposts(domain, users)
+		}
 		time.Sleep(1 * time.Second)
 	}
 }

@@ -9,10 +9,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
 	"golang.org/x/net/html"
+	"golang.org/x/net/publicsuffix"
 
 	"strings"
 
@@ -30,6 +32,12 @@ const (
 var (
 	bot, wrbot *tgbotapi.BotAPI
 )
+
+type ShortUrl struct {
+	Kind    string `json:"kind"`
+	ID      string `json:"id"`
+	LongURL string `json:"longUrl"`
+}
 
 func main() {
 	//botfile:= "telefeed.bot"
@@ -55,14 +63,14 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("%v+\n", time.Now())
-	//go forever()
-	parseRss()
-	//select {} // block forever
+	go forever()
+	//parseRss()
+	select {} // block forever
 }
 
 func forever() {
 	for {
-		//fmt.Printf("%v+\n", time.Now())
+		fmt.Printf("%v+\n", time.Now())
 		parseRss()
 		time.Sleep(600 * time.Second)
 	}
@@ -75,6 +83,9 @@ func parseRss() {
 
 		log.Println(hash)
 		users := domUsers(hash)
+		if len(users) == 0 {
+			continue
+		}
 		saveposts(url, users)
 		time.Sleep(1 * time.Second)
 
@@ -98,7 +109,7 @@ func GetMD5Hash(text string) string {
 }
 
 func saveposts(link string, users map[int]bool) {
-	log.Println(link)
+	log.Println("link", link, "userslen", len(users))
 
 	var defHeaders = make(map[string]string)
 	defHeaders["User-Agent"] = "script::recoilme:v1"
@@ -123,8 +134,7 @@ func saveposts(link string, users map[int]bool) {
 		}
 		item := feed.Items[last-i]
 
-		log.Println(item.Link)
-		key := GetMD5Hash(item.Link)
+		key := GetMD5Hash(link) + "_" + GetMD5Hash(item.Link)
 		body := httputils.HttpGet(params.Links+key, nil)
 		if body != nil {
 			continue
@@ -141,12 +151,11 @@ func saveposts(link string, users map[int]bool) {
 }
 
 func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
-	fmt.Printf("%+v\n", p)
+	//fmt.Printf("%+v\n", p)
 	var vkcnt int64 = -1001067277325 //myakotka
 	log.Println("pubpost", p.GUID)
 
-	var content = p.Title + p.Description + p.Content
-	var links = extractLinks(content)
+	var links = extractLinks(p.Title + " " + p.Description + " " + p.Content)
 	log.Println("lin1", links)
 	if p.Enclosures != nil {
 		for _, encl := range p.Enclosures {
@@ -168,26 +177,55 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 		}
 	}
 	log.Println("phot:", photo)
-	if photo != "" && len(p.Title) > 3 && len(p.Title) < 200 {
+
+	var title = strings.Trim(strings.Join(extractText(p.Title), " "), "\n ")
+
+	var description = strings.Trim(strings.Join(extractText(p.Description), " "), "\n ")
+
+	var caption = title
+	var link = p.Link
+	urls, err := url.Parse(link)
+	var tag = ""
+	if err == nil {
+		link = urls.Host + urls.Path
+		mainDomain, err := publicsuffix.EffectiveTLDPlusOne(urls.Host)
+		if err == nil {
+			if strings.LastIndex(mainDomain, ".") != -1 {
+				tag = "#" + mainDomain[:strings.LastIndex(mainDomain, ".")] + " "
+			} else {
+				tag = "#" + mainDomain + " "
+			}
+		}
+	}
+
+	//get short url
+	short := shortenUrl(link)
+	if short != "" {
+		link = short
+	}
+	appendix := fmt.Sprintf("\n%s🔗 %s", tag, link)
+
+	if photo != "" {
+		var maxlen = 198 - len(caption) - len(appendix)
+		descr := description
+		words := strings.Split(descr, " ")
+		for i, word := range words {
+			if i == 0 {
+				caption = caption + "\n"
+			}
+			if len(word) < maxlen {
+				maxlen = maxlen - len(word) - 1
+				caption = caption + word + " "
+			} else {
+				caption = caption + ".."
+				break
+			}
+		}
+		caption = caption + appendix
+		log.Println("caption", caption)
+
 		b := httputils.HttpGet(photo, nil)
 		if b != nil {
-			var caption = p.Title
-			appendix := fmt.Sprintf("\n🔗 %s", p.Link)
-			var maxlen = 248 - len(caption) - len(appendix)
-			words := strings.Split(p.Description, " ")
-			for i, word := range words {
-				if i == 0 {
-					caption = caption + "\n"
-				}
-				if len(word) < maxlen {
-					maxlen = maxlen - len(word) - 1
-					caption = caption + word + " "
-				} else {
-					caption = caption + ".."
-					break
-				}
-			}
-			caption = caption + appendix
 
 			bb := tgbotapi.FileBytes{Name: photo, Bytes: b}
 			msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
@@ -196,21 +234,30 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 			res, err := wrbot.Send(msg)
 			if err == nil {
 				for user := range users {
-
 					bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
 				}
+			} else {
+				log.Println("\n\n\n\n\nError", err)
+				fmt.Printf("%+v\n", msg)
 			}
+
 		}
 	} else {
-		msg := tgbotapi.NewMessage(vkcnt, p.Link)
-		msg.DisableWebPagePreview = false
+		if len(description) > 3000 {
+			description = ""
+		}
+		msg := tgbotapi.NewMessage(vkcnt, "*"+title+"*\n"+description+appendix)
+		msg.DisableWebPagePreview = true
 		msg.DisableNotification = true
+		msg.ParseMode = "Markdown"
 		res, err := wrbot.Send(msg)
 		if err == nil {
 			for user := range users {
-				log.Println(user)
 				bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
 			}
+		} else {
+			log.Println("\n\n\n\n\nError", err)
+			fmt.Printf("%+v\n", msg)
 		}
 	}
 }
@@ -251,7 +298,55 @@ func getVal(t html.Token, key string) (ok bool, val string) {
 	return
 }
 
+func extractText(s string) (texts []string) {
+	var wasNl = false
+	z := html.NewTokenizer(strings.NewReader(s))
+	for {
+		tt := z.Next()
+		switch {
+		case tt == html.ErrorToken:
+			// End of the document, we're done
+			//log.Println("err tok")
+			return
+		case tt == html.TextToken:
+			t := z.Token()
+			text := strings.TrimSpace(t.Data)
+			if text != "" {
+				texts = append(texts, strings.TrimSpace(t.Data))
+				wasNl = false
+				//log.Println("text:", "'"+strings.TrimSpace(t.Data)+"'")
+			}
+
+		case tt == html.StartTagToken || tt == html.SelfClosingTagToken:
+			t := z.Token()
+			switch t.Data {
+			case "br":
+				if !wasNl {
+					texts = append(texts, "\n")
+				}
+				wasNl = true
+			}
+		}
+	}
+}
+
 func extractLinks(s string) (links []string) {
+	checkLink := func(s string) {
+		url, err := url.Parse(s)
+		if err == nil {
+			if url.Host == "" {
+				return
+			}
+			if url.Host == "imgur.com" {
+				//"https://imgur.com/bgtwwY2"
+				paths := strings.Split(url.Path, "/")
+				if len(paths) == 2 && strings.Contains(url.Path, ".") == false {
+					s = s + ".png"
+				}
+			}
+			links = append(links, s)
+		}
+	}
 	z := html.NewTokenizer(strings.NewReader(s))
 	for {
 		tt := z.Next()
@@ -271,14 +366,15 @@ func extractLinks(s string) (links []string) {
 				if !ok {
 					continue
 				}
-				links = append(links, href)
+				checkLink(href)
+
 				//log.Println(href)
 			case "a":
 				ok, href := getVal(t, "href")
 				if !ok {
 					continue
 				}
-				links = append(links, href)
+				checkLink(href)
 			default:
 				//		log.Println("t.data", t.Data)
 				continue
@@ -295,8 +391,8 @@ func getImgs(links []string) (imgs map[string]int) {
 			continue
 		}
 		len, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
-		// 10 - 500kb~
-		if len < 10000 || len > 1000000 {
+		// 10 - 500kb~?
+		if len < 7000 || len > 2000000 {
 			continue
 		}
 		isImg := strings.HasPrefix(resp.Header.Get("Content-Type"), "image")
@@ -305,4 +401,22 @@ func getImgs(links []string) (imgs map[string]int) {
 		}
 	}
 	return imgs
+}
+
+func shortenUrl(url string) (id string) {
+	s := "{\"longUrl\": \"" + url + "\"}"
+	resp, err := http.Post(params.ShortUrl, "application/json", strings.NewReader(s))
+	if err == nil {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err == nil {
+			//log.Println(string(body))
+			var sh ShortUrl
+			err := json.Unmarshal(body, &sh)
+			if err == nil {
+				id = sh.ID
+			}
+		}
+	}
+	return
 }

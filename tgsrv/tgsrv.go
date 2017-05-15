@@ -119,6 +119,18 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 		mainDomain, _ := publicsuffix.EffectiveTLDPlusOne(urls.Host)
 
 		switch mainDomain {
+		case "twitter.com":
+			parts := strings.Split(urls.Path, "/")
+			log.Println(parts)
+			if len(parts) == 2 {
+				findFeed("https://twitrss.me/twitter_user_to_rss/?user="+parts[1], msg, delete)
+			}
+		case "instagram.com":
+			parts := strings.Split(urls.Path, "/")
+			log.Println(parts)
+			if len(parts) == 2 {
+				findFeed("https://web.stagram.com/rss/n/"+parts[1], msg, delete)
+			}
 		case "vk.com":
 			parts := strings.Split(urls.Path, "/")
 			for j := range parts {
@@ -153,26 +165,30 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 				}
 			}
 		default:
-			log.Println("word", word)
-			var feedlink = getFeedLink(word)
-			if feedlink == "" {
-				log.Println("feedlink", feedlink)
-				rss := rssExtract(word)
-				if rss != "" {
-					log.Println("rss", rss)
-					feedlink = getFeedLink(rss)
-					log.Println("feedlink", feedlink)
-				}
-			}
-			if feedlink != "" {
-				feedkey := GetMD5Hash(feedlink)
-				//create feed or overwrite
-				httputils.HttpPut(params.Feeds+feedkey, nil, []byte(feedlink))
-				feedSubTgAdd(feedlink, msg, delete)
-			} else {
-				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain: "+word+"\n"+params.NotFound))
-			}
+			findFeed(word, msg, delete)
 		}
+	}
+}
+
+func findFeed(word string, msg *tgbotapi.Message, isDelete bool) {
+	log.Println("word", word)
+	var feedlink = getFeedLink(word)
+	if feedlink == "" {
+		log.Println("feedlink", feedlink)
+		rss := rssExtract(word)
+		if rss != "" {
+			log.Println("rss", rss)
+			feedlink = getFeedLink(rss)
+			log.Println("feedlink", feedlink)
+		}
+	}
+	if feedlink != "" {
+		feedkey := GetMD5Hash(feedlink)
+		//create feed or overwrite
+		httputils.HttpPut(params.Feeds+feedkey, nil, []byte(feedlink))
+		feedSubTgAdd(feedlink, msg, isDelete)
+	} else {
+		bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain: "+word+"\n"+params.NotFound))
 	}
 }
 
