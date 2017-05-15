@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -233,4 +234,19 @@ func vkdomains() (domains []vkapi.Group) {
 		}
 	}
 	return
+}
+
+func TestInst(t *testing.T) {
+	word := "https://www.instagram.com/MillaJovovich/"
+	urls, _ := url.Parse(word)
+	parts := strings.Split(urls.Path, "/")
+	log.Println(parts)
+	for _, part := range parts {
+		if part != "" {
+			log.Println("oart", part)
+		}
+	}
+	//if len(parts) == 2 {
+	//findFeed("https://web.stagram.com/rss/n/"+parts[1], msg, delete)
+	//}
 }

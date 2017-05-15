@@ -121,15 +121,17 @@ func pubFind(msg *tgbotapi.Message, txt string) {
 		switch mainDomain {
 		case "twitter.com":
 			parts := strings.Split(urls.Path, "/")
-			log.Println(parts)
-			if len(parts) == 2 {
-				findFeed("https://twitrss.me/twitter_user_to_rss/?user="+parts[1], msg, delete)
+			for _, part := range parts {
+				if part != "" {
+					findFeed("https://twitrss.me/twitter_user_to_rss/?user="+part, msg, delete)
+				}
 			}
 		case "instagram.com":
 			parts := strings.Split(urls.Path, "/")
-			log.Println(parts)
-			if len(parts) == 2 {
-				findFeed("https://web.stagram.com/rss/n/"+parts[1], msg, delete)
+			for _, part := range parts {
+				if part != "" {
+					findFeed("https://web.stagram.com/rss/n/"+part, msg, delete)
+				}
 			}
 		case "vk.com":
 			parts := strings.Split(urls.Path, "/")

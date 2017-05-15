@@ -31,6 +31,7 @@ const (
 
 var (
 	bot, wrbot *tgbotapi.BotAPI
+	tok4vid    string
 )
 
 type ShortUrl struct {
@@ -53,6 +54,7 @@ func main() {
 	}
 	tgtoken := strings.Replace(string(tlgrmtoken), "\n", "", -1)
 	wrtoken := strings.Replace(string(writetoken), "\n", "", -1)
+	tok4vid = wrtoken
 	bot, err = tgbotapi.NewBotAPI(tgtoken)
 	if err != nil {
 		log.Fatal(err)
@@ -170,6 +172,11 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	var max = 0
 	var photo = ""
 	for img, len := range imgs {
+		//gif hack
+		if strings.HasSuffix(img, ".gif") {
+			photo = img
+			break
+		}
 		if len > max {
 			max = len
 			photo = img
@@ -205,8 +212,19 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	}
 	appendix := fmt.Sprintf("\n%s🔗 %s", tag, link)
 
+	//video
+	//video
+	//video := "https://i.imgur.com/JOwvswE.mp4"
+	video := getVideo(links)
+	if video != "" {
+		ok := sendVideo(video, title+appendix, users, vkcnt)
+		if ok {
+			return
+		}
+	}
+
 	if photo != "" {
-		var maxlen = 198 - len(caption) - len(appendix)
+		var maxlen = 190 - len(caption) - len(appendix)
 		descr := description
 		words := strings.Split(descr, " ")
 		for i, word := range words {
@@ -260,6 +278,50 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 			fmt.Printf("%+v\n", msg)
 		}
 	}
+}
+
+func sendVideo(video string, caption string, users map[int]bool, vkcnt int64) (ok bool) {
+	captionQ := url.QueryEscape(caption)
+	vidurl := params.TgApi + "/bot" + tok4vid + "/sendVideo?chat_id=@myakotkapub&disable_notification=true&caption=" + captionQ + "&video=" + video
+	//https://api.telegram.org/bot332514590:AAFq1wVBFZDMbKPoVQ1Oq6U1SijLGuYsZC0/sendVideo?chat_id=@myakotkapub&video=http://i.imgur.com/JOwvswE.mp4
+	//log.Println("vidurl", vidurl)
+	b := httputils.HttpGet(vidurl, nil)
+	if b != nil {
+		type apires struct {
+			Ok     bool `json:"ok"`
+			Result struct {
+				MessageID int `json:"message_id"`
+				Chat      struct {
+					ID       int64  `json:"id"`
+					Title    string `json:"title"`
+					Username string `json:"username"`
+					Type     string `json:"type"`
+				} `json:"chat"`
+				Date     int `json:"date"`
+				Document struct {
+					FileName string `json:"file_name"`
+					MimeType string `json:"mime_type"`
+					Thumb    struct {
+						FileID   string `json:"file_id"`
+						FileSize int    `json:"file_size"`
+						Width    int    `json:"width"`
+						Height   int    `json:"height"`
+					} `json:"thumb"`
+					FileID   string `json:"file_id"`
+					FileSize int    `json:"file_size"`
+				} `json:"document"`
+			} `json:"result"`
+		}
+		var result apires
+		err := json.Unmarshal(b, &result)
+		if err == nil {
+			ok = true
+			for user := range users {
+				bot.Send(tgbotapi.NewForward(int64(user), vkcnt, result.Result.MessageID))
+			}
+		}
+	}
+	return
 }
 
 func rssdomains() map[string]string {
@@ -381,6 +443,32 @@ func extractLinks(s string) (links []string) {
 			}
 		}
 	}
+}
+
+// Dirty little hacks(
+func getVideo(links []string) (video string) {
+
+	for _, link := range links {
+		url, err := url.Parse(link)
+		if err == nil {
+			if url.Host == "" {
+				continue
+			}
+			log.Println("url.Host", url.Host)
+			if url.Host == "imgur.com" || url.Host == "i.imgur.com" {
+				if strings.HasSuffix(link, "gifv") {
+					video = strings.Replace(link, ".gifv", ".mp4", -1)
+					break
+				}
+			}
+			if url.Host == "gfycat.com" {
+				video = strings.Replace(link, "gfycat.com", "thumbs.gfycat.com", -1)
+				video = video + "-mobile.mp4"
+				break
+			}
+		}
+	}
+	return video
 }
 
 func getImgs(links []string) (imgs map[string]int) {

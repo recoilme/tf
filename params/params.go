@@ -1,15 +1,10 @@
 package params
 
-import (
-	"io/ioutil"
-	"log"
-)
-
 const (
-	api = "http://badtobefat.ru/bolt"
-	//api          = "http://localhost:5000/bolt"
-	//Telefeedfile = "telefeedtst.bot"
-	Telefeedfile = "telefeed.bot"
+	//api = "http://badtobefat.ru/bolt"
+	api          = "http://localhost:5000/bolt"
+	Telefeedfile = "telefeedtst.bot"
+	//Telefeedfile = "telefeed.bot"
 	Vkwriterfile = "vkwriter.bot"
 	users        = "/usertg/"
 	pubNames     = "/pubNames/"
@@ -21,6 +16,7 @@ const (
 	feeds        = "/feeds/"
 	links        = "/links/"
 	ShortUrl     = "https://www.googleapis.com/urlshortener/v1/url?key=AIzaSyCTmUsTGqjl7iWJLiJisrejgTNamp7bfIA"
+	TgApi        = "https://api.telegram.org"
 	BaseUri      = api + "/"
 	Publics      = api + pubNames
 	Feeds        = api + feeds
@@ -39,5 +35,5 @@ const (
 )
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	//log.SetOutput(ioutil.Discard)
 }
