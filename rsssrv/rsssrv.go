@@ -155,7 +155,7 @@ func saveposts(link string, users map[int]bool) {
 func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	//fmt.Printf("%+v\n", p)
 	var vkcnt int64 = -1001067277325 //myakotka
-	log.Println("pubpost", p.GUID)
+	//log.Println("pubpost", p.GUID)
 
 	var links = extractLinks(p.Title + " " + p.Description + " " + p.Content)
 	log.Println("lin1", links)
@@ -172,11 +172,6 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	var max = 0
 	var photo = ""
 	for img, len := range imgs {
-		//gif hack
-		if strings.HasSuffix(img, ".gif") {
-			photo = img
-			break
-		}
 		if len > max {
 			max = len
 			photo = img
@@ -184,7 +179,6 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 		}
 	}
 	log.Println("phot:", photo)
-
 	var title = strings.Trim(strings.Join(extractText(p.Title), " "), "\n ")
 
 	var description = strings.Trim(strings.Join(extractText(p.Description), " "), "\n ")
@@ -194,7 +188,6 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	urls, err := url.Parse(link)
 	var tag = ""
 	if err == nil {
-		link = urls.Host + urls.Path
 		mainDomain, err := publicsuffix.EffectiveTLDPlusOne(urls.Host)
 		if err == nil {
 			if strings.LastIndex(mainDomain, ".") != -1 {
@@ -226,19 +219,8 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	if photo != "" {
 		var maxlen = 190 - len(caption) - len(appendix)
 		descr := description
-		words := strings.Split(descr, " ")
-		for i, word := range words {
-			if i == 0 {
-				caption = caption + "\n"
-			}
-			if len(word) < maxlen {
-				maxlen = maxlen - len(word) - 1
-				caption = caption + word + " "
-			} else {
-				caption = caption + ".."
-				break
-			}
-		}
+		caption = trimTo(descr, maxlen)
+
 		caption = caption + appendix
 		log.Println("caption", caption)
 
@@ -246,26 +228,45 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 		if b != nil {
 
 			bb := tgbotapi.FileBytes{Name: photo, Bytes: b}
-			msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
-			msg.Caption = caption
-			msg.DisableNotification = true
-			res, err := wrbot.Send(msg)
-			if err == nil {
-				for user := range users {
-					bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
-				}
-			} else {
-				log.Println("\n\n\n\n\nError", err)
-				fmt.Printf("%+v\n", msg)
-			}
 
+			if strings.HasSuffix(photo, ".gif") {
+				msg := tgbotapi.NewDocumentUpload(vkcnt, bb)
+				msg.Caption = caption
+				msg.DisableNotification = true
+				res, err := wrbot.Send(msg)
+				if err == nil {
+					for user := range users {
+						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+					}
+				} else {
+					log.Println("\n\n\n\n\nError", err)
+					fmt.Printf("%+v\n", msg)
+				}
+
+			} else {
+				msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
+				msg.Caption = caption
+				msg.DisableNotification = true
+				res, err := wrbot.Send(msg)
+				if err == nil {
+					for user := range users {
+						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+					}
+				} else {
+					log.Println("\n\n\n\n\nError", err)
+					fmt.Printf("%+v\n", msg)
+				}
+			}
 		}
 	} else {
-		if len(description) > 3000 {
-			description = ""
-		}
-		msg := tgbotapi.NewMessage(vkcnt, "*"+title+"*\n"+description+appendix)
+		description = trimTo(description, 4000-len(title)-len(appendix)-10)
+		msgtxt := "*" + title + "*\n" + description + appendix
+		msg := tgbotapi.NewMessage(vkcnt, msgtxt)
 		msg.DisableWebPagePreview = true
+		if len(msgtxt) < 250 {
+			msg.DisableWebPagePreview = false
+		}
+
 		msg.DisableNotification = true
 		msg.ParseMode = "Markdown"
 		res, err := wrbot.Send(msg)
@@ -278,6 +279,24 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 			fmt.Printf("%+v\n", msg)
 		}
 	}
+}
+
+func trimTo(s string, lenstart int) (result string) {
+	var maxlen = lenstart
+	words := strings.Split(s, " ")
+	for i, word := range words {
+		if i == 0 {
+			result = result + "\n"
+		}
+		if len(word) < maxlen {
+			maxlen = maxlen - len(word) - 1
+			result = result + word + " "
+		} else {
+			result = result + ".."
+			break
+		}
+	}
+	return
 }
 
 func sendVideo(video string, caption string, users map[int]bool, vkcnt int64) (ok bool) {
@@ -473,6 +492,7 @@ func getVideo(links []string) (video string) {
 
 func getImgs(links []string) (imgs map[string]int) {
 	imgs = make(map[string]int)
+	var maxlen = 2000000
 	for _, link := range links {
 		resp, err := http.Head(link)
 		if err != nil {
@@ -480,7 +500,13 @@ func getImgs(links []string) (imgs map[string]int) {
 		}
 		len, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
 		// 10 - 500kb~?
-		if len < 7000 || len > 2000000 {
+		//gif hack
+		if strings.HasSuffix(link, ".gif") {
+			maxlen = 20000000
+		} else {
+			maxlen = 2000000
+		}
+		if len < 7000 || len > maxlen {
 			continue
 		}
 		isImg := strings.HasPrefix(resp.Header.Get("Content-Type"), "image")
