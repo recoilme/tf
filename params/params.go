@@ -32,10 +32,10 @@ const (
 	FeedSubs     = api + feedSubTg
 	UserSubs     = api + userSubTg
 	LastPost     = api + lastPost
-	Example      = "\nExample: \nhttps://www.reddit.com/r/gifs/top/\n\nMore examples: http://telegra.ph/telefeedbot-05-12\n "
+	Example      = "\nExample: \nhttps://www.reddit.com/r/gifs/top/\nhttps://vk.com/evil_incorparate\n\nMore examples: http://telegra.ph/telefeedbot-05-12\n "
 	SomeErr      = "🇬🇧 Something going wrong. Try later.. 🇷🇺 Ошибка, мать её!"
-	Hello        = "🇬🇧 Send me links to some page and I will send you new articles.\n🇷🇺 Отправь мне ссылки на страницы, и я буду присылать тебе новые статьи с них.\n" + Example + "\nContacts: @recoilme"
-	Psst         = "🇬🇧 Psst. As soon as there are new articles here - I will immediately send them\nSend delete link_on_domain for unsubscribe\n\n🇷🇺 Псст. Как только появятся новые статьи здесь -  я их сразу пришлю\nПришли delete ссылка_на_домен, чтобы отписаться"
+	Hello        = "🇬🇧 Send me link.\n\n🇷🇺 Отправь мне ссылку.\n\n" + Example
+	Psst         = "🇬🇧 As soon as there are new articles here - i will  send them\nSend delete link_on_domain for unsubscribe\n\n🇷🇺 Я отправлю новый пост, как только он выйдет\nПришли delete ссылка_на_домен, чтобы отписаться"
 	NotFound     = "🇬🇧 Not found\n🇷🇺 Домен не найден"
 )
 

@@ -190,7 +190,7 @@ func findFeed(word string, msg *tgbotapi.Message, isDelete bool) {
 		httputils.HttpPut(params.Feeds+feedkey, nil, []byte(feedlink))
 		feedSubTgAdd(feedlink, msg, isDelete)
 	} else {
-		bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Domain: "+word+"\n"+params.NotFound))
+		bot.Send(tgbotapi.NewMessage(msg.Chat.ID, word+"\n"+params.NotFound))
 	}
 }
 
@@ -215,9 +215,9 @@ func feedSubTgAdd(feedlink string, msg *tgbotapi.Message, isDelete bool) {
 		result := httputils.HttpPut(url, nil, data)
 		if result == true {
 			if isDelete {
-				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Ups! Removed domain: "+feedlink+"\n"))
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Removed: "+feedlink+"\n"))
 			} else {
-				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Wow! New domain: "+feedlink+"\n"+
+				bot.Send(tgbotapi.NewMessage(msg.Chat.ID, feedlink+" 👍\n\n"+
 					params.Psst))
 			}
 		}

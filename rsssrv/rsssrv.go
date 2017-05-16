@@ -127,8 +127,8 @@ func saveposts(link string, users map[int]bool) {
 	}
 
 	var last = len(feed.Items) - 1
-	if last > 10 {
-		last = 10
+	if last > 2 {
+		last = 2
 	}
 	for i := range feed.Items {
 		if i == last {
@@ -197,6 +197,8 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 			}
 		}
 	}
+	tag = strings.Replace(tag, "-", "", -1)
+	tag = strings.Replace(tag, ".", "", -1)
 
 	//get short url
 	short := shortenUrl(link)
