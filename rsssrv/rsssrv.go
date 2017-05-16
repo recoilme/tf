@@ -208,8 +208,6 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	appendix := fmt.Sprintf("\n%s🔗 %s", tag, link)
 
 	//video
-	//video
-	//video := "https://i.imgur.com/JOwvswE.mp4"
 	video := getVideo(links)
 	if video != "" {
 		ok := sendVideo(video, title+appendix, users, vkcnt)
@@ -221,7 +219,7 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	if photo != "" {
 		var maxlen = 190 - len([]rune(caption)) - len([]rune(appendix))
 		descr := description
-		caption = trimTo(descr, maxlen)
+		caption = caption + trimTo(descr, maxlen)
 
 		caption = caption + appendix
 		log.Println("caption", caption)
