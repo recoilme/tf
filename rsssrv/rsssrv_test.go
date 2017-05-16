@@ -74,4 +74,7 @@ func TestExtrTxt(t *testing.T) {
 	ss := `<table> <tr><td> <a href="https://www.reddit.com/r/aww/comments/6b3zjc/how_a_cat_makes_footprints/"> <img src="https://a.thumbs.redditmedia.com/bHITkqdGZE5klLGSqeMMfD0P0DHnvELBIRrrzg7rlh4.jpg" alt="How a cat makes footprints" title="How a cat makes footprints" /> </a> </td><td> &#32; submitted by &#32; <a href="https://www.reddit.com/user/Panda_911"> /u/Panda_911 </a> <br/> <span><a href="http://i.imgur.com/iG5fcSn.gifv">[link]</a></span> &#32; <span><a href="https://www.reddit.com/r/aww/comments/6b3zjc/how_a_cat_makes_footprints/">[комментарии]</a></span> </td></tr></table> Link:https://www.reddit.com/r/aww/comments/6b3zjc/how_a_cat_makes_footprints/`
 	txt2 := extractText(ss)
 	log.Println("txt2", txt2)
+
+	ss3 := "Однажды в детстве я сказала родителям, что меня обижаеnОднажды в детстве я сказала родителям, что меня обижаеnОднажды в детстве я сказала родителям, что меня обижаеnОднажды в детстве я сказала родител"
+	log.Println("ss3", len([]rune(ss3)))
 }

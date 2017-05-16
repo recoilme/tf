@@ -219,7 +219,7 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 	}
 
 	if photo != "" {
-		var maxlen = 190 - len(caption) - len(appendix)
+		var maxlen = 190 - len([]rune(caption)) - len([]rune(appendix))
 		descr := description
 		caption = trimTo(descr, maxlen)
 
@@ -261,11 +261,11 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 			}
 		}
 	} else {
-		description = trimTo(description, 4000-len(title)-len(appendix)-10)
+		description = trimTo(description, 4000-len([]rune(title))-len([]rune(appendix))-10)
 		msgtxt := "*" + title + "*\n" + description + appendix
 		msg := tgbotapi.NewMessage(vkcnt, msgtxt)
 		msg.DisableWebPagePreview = true
-		if len(msgtxt) < 250 {
+		if len([]rune(msgtxt)) < 250 {
 			msg.DisableWebPagePreview = false
 		}
 
@@ -290,8 +290,8 @@ func trimTo(s string, lenstart int) (result string) {
 		if i == 0 {
 			result = result + "\n"
 		}
-		if len(word) < maxlen {
-			maxlen = maxlen - len(word) - 1
+		if len([]rune(word)) < maxlen {
+			maxlen = maxlen - len([]rune(word)) - 1
 			result = result + word + " "
 		} else {
 			result = result + ".."

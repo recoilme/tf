@@ -1,10 +1,5 @@
 package params
 
-import (
-	"io/ioutil"
-	"log"
-)
-
 const (
 	api = "http://badtobefat.ru/bolt"
 	//api          = "http://localhost:5000/bolt"
@@ -40,5 +35,5 @@ const (
 )
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	//log.SetOutput(ioutil.Discard)
 }
