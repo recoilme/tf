@@ -32,9 +32,9 @@ const (
 	FeedSubs     = api + feedSubTg
 	UserSubs     = api + userSubTg
 	LastPost     = api + lastPost
-	Example      = "\nExample: \nhttps://vk.com/myakotkapub\n"
+	Example      = "\nExample: \nhttps://www.reddit.com/r/gifs/top/\n\nMore examples: http://telegra.ph/telefeedbot-05-12\n "
 	SomeErr      = "🇬🇧 Something going wrong. Try later.. 🇷🇺 Ошибка, мать её!"
-	Hello        = "🇬🇧 Send me links to public pages from vk.com, and I will send you new articles.\n🇷🇺 Отправь мне ссылки на общедоступные страницы c vk.com, и я буду присылать тебе новые статьи с них.\n" + Example + "\nContacts: @recoilme"
+	Hello        = "🇬🇧 Send me links to some page and I will send you new articles.\n🇷🇺 Отправь мне ссылки на страницы, и я буду присылать тебе новые статьи с них.\n" + Example + "\nContacts: @recoilme"
 	Psst         = "🇬🇧 Psst. As soon as there are new articles here - I will immediately send them\nSend delete link_on_domain for unsubscribe\n\n🇷🇺 Псст. Как только появятся новые статьи здесь -  я их сразу пришлю\nПришли delete ссылка_на_домен, чтобы отписаться"
 	NotFound     = "🇬🇧 Not found\n🇷🇺 Домен не найден"
 )

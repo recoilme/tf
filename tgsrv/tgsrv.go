@@ -68,15 +68,15 @@ func main() {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "http://telegra.ph/telefeedbot-05-12"))
 		case "/list":
 			subs := usersub("", update.Message.From.ID, true)
-			var s string
+			var s = "Subscriptions (send 'delete http://..' - for unsubscribe):\n"
 			for k, _ := range subs {
 				if strings.Contains(k, params.Publics) {
-					s = s + "\nhttps://vk.com/" + strings.Replace(k, params.Publics, "", -1)
+					s = s + "\n\nhttps://vk.com/" + strings.Replace(k, params.Publics, "", -1)
 				}
 				if strings.Contains(k, params.Feeds) {
 					b := httputils.HttpGet(k, nil)
 					if b != nil {
-						s = s + "\n" + string(b)
+						s = s + "\n\n" + string(b)
 					}
 				}
 			}
