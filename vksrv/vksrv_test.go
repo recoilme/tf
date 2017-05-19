@@ -2,16 +2,24 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"strconv"
 	"testing"
 	"time"
 
 	"strings"
 
+	"github.com/recoilme/tf/params"
 	"github.com/recoilme/tf/vkapi"
 )
 
 func TestFeeds(t *testing.T) {
+	log.Println("TesRandd")
+	rand.Seed(time.Now().Unix())
+	log.Println("Magic 8-Ball says:", params.Stores[rand.Intn(len(params.Stores))])
+	log.Println("Magic 8-Ball says:", params.Stores[rand.Intn(len(params.Stores))])
+	log.Println("Magic 8-Ball says:", params.Stores[rand.Intn(len(params.Stores))])
+	log.Println("TestFeeds")
 	var url = "https://api.vk.com/method/wall.get?domain=driveru&v=5.63"
 	var offset = 0
 	//count := 50
@@ -24,18 +32,6 @@ func TestFeeds(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
-}
-
-func TestDonetsk(t *testing.T) {
-	s := vkapi.WallGet(23502694)
-	for _, p := range s {
-		var i = 30
-		if len(p.Text) < 30 {
-			i = len(p.Text)
-		}
-		log.Println(p.Id, p.Text[:i])
-	}
-	//log.Println(s)
 }
 
 func TesPosts(url string) {

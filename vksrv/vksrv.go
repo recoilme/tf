@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -200,7 +201,7 @@ func vkdomains() (domains []vkapi.Group) {
 	return
 }
 
-func forward(users map[int]bool, msgID int, e error) {
+func forward(users map[int]bool, msgID int, e error, storeId int64) {
 	if e != nil {
 		fmt.Printf("Error post to myakotka: %s\n", e.Error)
 		return
@@ -209,7 +210,7 @@ func forward(users map[int]bool, msgID int, e error) {
 	var counter = 0
 	for user := range users {
 		//log.Println(user)
-		_, err := bot.Send(tgbotapi.NewForward(int64(user), params.MyakotkaId, msgID))
+		_, err := bot.Send(tgbotapi.NewForward(int64(user), storeId, msgID))
 		if err != nil {
 			fmt.Printf("Error post to user:%d %s\n", int64(user), err)
 		}
@@ -220,8 +221,14 @@ func forward(users map[int]bool, msgID int, e error) {
 	}
 }
 
+func getStoreId() int64 {
+	rand.Seed(time.Now().Unix())
+	return params.StoreIds[rand.Intn(len(params.StoreIds))]
+}
+
 func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	log.Println("pubpost", p.Id)
+	var storeId = getStoreId()
 	time.Sleep(2 * time.Second)
 	//var vkcnt int64 = -1001067277325 //myakotka
 	//var fwd int64 = 366035536        //telefeed
@@ -233,17 +240,18 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	tag := strings.Replace(domain.ScreenName, ".", "", -1)
 	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
 	if len(p.Attachments) == 0 || len([]rune(t)) > 200 {
-		msg := tgbotapi.NewMessage(params.MyakotkaId, t+appendix)
+		msg := tgbotapi.NewMessage(storeId, t+appendix)
 		t = ""
 		msg.DisableWebPagePreview = true
 		msg.DisableNotification = true
 		res, err := wrbot.Send(msg)
 
-		forward(users, res.MessageID, err)
+		forward(users, res.MessageID, err, storeId)
 
 	}
 	for i := range p.Attachments {
 		time.Sleep(500 * time.Millisecond)
+		storeId = getStoreId()
 		att := p.Attachments[i]
 		log.Println(att.Type)
 		switch att.Type {
@@ -262,7 +270,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 			b := httputils.HttpGet(photo, nil)
 			if b != nil {
 				bb := tgbotapi.FileBytes{Name: photo, Bytes: b}
-				msg := tgbotapi.NewPhotoUpload(params.MyakotkaId, bb)
+				msg := tgbotapi.NewPhotoUpload(storeId, bb)
 				if i == 0 {
 					msg.Caption = t + appendix
 				} else {
@@ -271,7 +279,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 
-				forward(users, res.MessageID, err)
+				forward(users, res.MessageID, err, storeId)
 
 			}
 		case "video":
@@ -279,12 +287,12 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 			urlv := fmt.Sprintf("https://vk.com/video%d_%d", att.Video.OwnerID, att.Video.ID)
 			if att.Video.Duration > 600 {
 				//send url
-				msg := tgbotapi.NewMessage(params.MyakotkaId, urlv+"\n"+appendix)
+				msg := tgbotapi.NewMessage(storeId, urlv+"\n"+appendix)
 				msg.DisableWebPagePreview = false
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 
-				forward(users, res.MessageID, err)
+				forward(users, res.MessageID, err, storeId)
 
 				continue
 			}
@@ -305,12 +313,12 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 						//post video
 						vidb := httputils.HttpGet(s, nil)
 						bb := tgbotapi.FileBytes{Name: s, Bytes: vidb}
-						msg := tgbotapi.NewVideoUpload(params.MyakotkaId, bb)
+						msg := tgbotapi.NewVideoUpload(storeId, bb)
 						msg.Caption = appendix
 						msg.DisableNotification = true
 						res, err := wrbot.Send(msg)
 
-						forward(users, res.MessageID, err)
+						forward(users, res.MessageID, err, storeId)
 
 					}
 				}
@@ -320,12 +328,12 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 			b := httputils.HttpGet(att.Doc.URL, nil)
 			if b != nil {
 				bb := tgbotapi.FileBytes{Name: "tmp." + att.Doc.Ext, Bytes: b}
-				msg := tgbotapi.NewDocumentUpload(params.MyakotkaId, bb)
+				msg := tgbotapi.NewDocumentUpload(storeId, bb)
 				msg.Caption = appendix
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 
-				forward(users, res.MessageID, err)
+				forward(users, res.MessageID, err, storeId)
 
 			}
 		case "link":
@@ -335,12 +343,13 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				b := httputils.HttpGet(att.Link.Photo.Photo604, nil)
 				if b != nil {
 					bb := tgbotapi.FileBytes{Name: att.Link.Photo.Photo604, Bytes: b}
-					msg := tgbotapi.NewPhotoUpload(params.MyakotkaId, bb)
+
+					msg := tgbotapi.NewPhotoUpload(storeId, bb)
 					msg.Caption = att.Link.Title + "\n" + att.Link.Description + "\n" + att.Link.URL + "\n" + appendix
 					msg.DisableNotification = true
 					res, err := wrbot.Send(msg)
 
-					forward(users, res.MessageID, err)
+					forward(users, res.MessageID, err, storeId)
 
 				}
 
@@ -348,11 +357,11 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				var desc = ""
 				desc = att.Link.Title + "\n" + att.Link.URL + "\n" + appendix
 
-				msg := tgbotapi.NewMessage(params.MyakotkaId, desc)
+				msg := tgbotapi.NewMessage(storeId, desc)
 				msg.DisableWebPagePreview = false
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
-				forward(users, res.MessageID, err)
+				forward(users, res.MessageID, err, storeId)
 
 			}
 		}
