@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"math/rand"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 
 	"strings"
 
+	"github.com/recoilme/tf/httputils"
 	"github.com/recoilme/tf/params"
 	"github.com/recoilme/tf/vkapi"
 )
@@ -18,16 +20,29 @@ func TestDonvk(t *testing.T) {
 	posts := vkapi.WallGet(1257785 * (-1))
 	log.Println("len", len(posts))
 
-	domains := vkdomains()
-	for i := range domains {
-		domain := domains[i]
-		log.Println(domain.ScreenName)
-		//users := domUsers(domains[i])
-		//if len(users) > 0 {
-		//saveposts(domain, users)
-		//}
-		//time.Sleep(1 * time.Second)
+	domains := getDomainNames()
+	for _, domainName := range domains {
+
+		//log.Println(domainName)
+
+		b := httputils.HttpGet(params.Publics+domainName, nil)
+		if b != nil {
+			var domain vkapi.Group
+			err := json.Unmarshal(b, &domain)
+			if err == nil {
+				log.Println(domain.ScreenName)
+				users := domUsers(domain)
+				if len(users) > 0 {
+					log.Println("saveposts", domain.ScreenName)
+					//saveposts(domain, users)
+				}
+			}
+		}
+
+		//time.Sleep(100 * time.Millisecond)
 	}
+
+	log.Println("len dom", len(domains))
 }
 
 func TestFeeds(t *testing.T) {

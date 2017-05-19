@@ -1,8 +1,13 @@
 package params
 
+import (
+	"io/ioutil"
+	"log"
+)
+
 const (
-	host = "localhost:5000"
-	//host         = "badtobefat.ru"
+	//host = "localhost:5000"
+	host         = "badtobefat.ru"
 	api          = "http://" + host + "/bolt"
 	Vkwriterfile = "vkwriter.bot"
 	users        = "/usertg/"
@@ -42,7 +47,7 @@ var (
 
 func init() {
 	if host == "badtobefat.ru" {
-		//log.SetOutput(ioutil.Discard)
+		log.SetOutput(ioutil.Discard)
 		Telefeedfile = "telefeed.bot"
 	} else {
 		//log.SetOutput(ioutil.Discard)

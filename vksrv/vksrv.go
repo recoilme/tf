@@ -64,16 +64,39 @@ func forever() {
 }
 
 func parseVk() {
-	domains := vkdomains()
-	for i := range domains {
-		domain := domains[i]
-		log.Println(domain.ScreenName)
-		users := domUsers(domains[i])
-		if len(users) > 0 {
-			saveposts(domain, users)
+
+	domains := getDomainNames()
+	for _, domainName := range domains {
+
+		//log.Println(domainName)
+
+		b := httputils.HttpGet(params.Publics+domainName, nil)
+		if b != nil {
+			var domain vkapi.Group
+			err := json.Unmarshal(b, &domain)
+			if err == nil {
+				log.Println(domain.ScreenName)
+				users := domUsers(domain)
+				if len(users) > 0 {
+					log.Println("saveposts", domain.ScreenName)
+					saveposts(domain, users)
+				}
+			}
 		}
-		time.Sleep(1 * time.Second)
+
+		//time.Sleep(100 * time.Millisecond)
 	}
+	/*
+		domains := vkdomains()
+		for i := range domains {
+			domain := domains[i]
+			log.Println(domain.ScreenName)
+			users := domUsers(domains[i])
+			if len(users) > 0 {
+				saveposts(domain, users)
+			}
+			time.Sleep(1 * time.Second)
+		}*/
 }
 
 func domUsers(domain vkapi.Group) (users map[int]bool) {
@@ -167,6 +190,23 @@ func getpost() (post vkapi.Post) {
 			if err == nil {
 				return
 			}
+		}
+	}
+	return
+}
+
+func getDomainNames() (domainNames []string) {
+	url := params.BaseUri + "pubNames/Last?cnt=1000000&order=desc&vals=false"
+	log.Println("vkdomains", url)
+	resp, err := http.Post(url, "application/json", nil)
+	if err == nil {
+		defer resp.Body.Close()
+		body, _ := ioutil.ReadAll(resp.Body)
+		err := json.Unmarshal(body, &domainNames)
+		if err == nil {
+			return
+		} else {
+			log.Println(err)
 		}
 	}
 	return
