@@ -59,7 +59,7 @@ func forever() {
 	for {
 		//fmt.Printf("%v+\n", time.Now())
 		parseVk()
-		time.Sleep(600 * time.Second)
+		time.Sleep(1200 * time.Second)
 	}
 }
 
@@ -184,7 +184,7 @@ func vkdomains() (domains []vkapi.Group) {
 		if err == nil {
 			for i := range domainNames {
 				domainName := domainNames[i]
-				//log.Println("domainName", domainName)
+				log.Println("domainName", domainName)
 				b := httputils.HttpGet(params.Publics+domainName, nil)
 				if b != nil {
 					var domain vkapi.Group

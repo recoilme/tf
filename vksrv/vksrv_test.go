@@ -13,12 +13,28 @@ import (
 	"github.com/recoilme/tf/vkapi"
 )
 
+func TestDonvk(t *testing.T) {
+	log.Println("TestDonvk")
+	posts := vkapi.WallGet(1257785 * (-1))
+	log.Println("len", len(posts))
+
+	domains := vkdomains()
+	for i := range domains {
+		domain := domains[i]
+		log.Println(domain.ScreenName)
+		//users := domUsers(domains[i])
+		//if len(users) > 0 {
+		//saveposts(domain, users)
+		//}
+		//time.Sleep(1 * time.Second)
+	}
+}
+
 func TestFeeds(t *testing.T) {
 	log.Println("TesRandd")
 	rand.Seed(time.Now().Unix())
 	log.Println("Magic 8-Ball says:", params.Stores[rand.Intn(len(params.Stores))])
-	log.Println("Magic 8-Ball says:", params.Stores[rand.Intn(len(params.Stores))])
-	log.Println("Magic 8-Ball says:", params.Stores[rand.Intn(len(params.Stores))])
+
 	log.Println("TestFeeds")
 	var url = "https://api.vk.com/method/wall.get?domain=driveru&v=5.63"
 	var offset = 0

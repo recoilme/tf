@@ -1,10 +1,5 @@
 package params
 
-import (
-	"io/ioutil"
-	"log"
-)
-
 const (
 	//host = "localhost:5000"
 	host         = "badtobefat.ru"
@@ -47,7 +42,7 @@ var (
 
 func init() {
 	if host == "badtobefat.ru" {
-		log.SetOutput(ioutil.Discard)
+		//log.SetOutput(ioutil.Discard)
 		Telefeedfile = "telefeed.bot"
 	} else {
 		//log.SetOutput(ioutil.Discard)
