@@ -30,8 +30,8 @@ func TimeoutDialer(config *Config) func(net, addr string) (c net.Conn, err error
 func NewTimeoutClient(args ...interface{}) *http.Client {
 	// Default configuration
 	config := &Config{
-		ConnectTimeout:   5 * time.Second,
-		ReadWriteTimeout: 5 * time.Second,
+		ConnectTimeout:   7 * time.Second,
+		ReadWriteTimeout: 7 * time.Second,
 	}
 
 	// merge the default with user input if there is one

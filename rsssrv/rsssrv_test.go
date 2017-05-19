@@ -75,6 +75,6 @@ func TestExtrTxt(t *testing.T) {
 	txt2 := extractText(ss)
 	log.Println("txt2", txt2)
 
-	ss3 := "Однажды в детстве я сказала родителям, что меня обижаеnОднажды в детстве я сказала родителям, что меня обижаеnОднажды в детстве я сказала родителям, что меня обижаеnОднажды в детстве я сказала родител"
+	ss3 := "Telefeed - universal web/rss reader for telegram. Read more: http://telegra.ph/telefeedbot-05-12  Партнер @botcollection"
 	log.Println("ss3", len([]rune(ss3)))
 }

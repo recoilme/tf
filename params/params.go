@@ -6,10 +6,11 @@ import (
 )
 
 const (
-	api = "http://badtobefat.ru/bolt"
-	//api          = "http://localhost:5000/bolt"
+	//host = "localhost:5000"
+	host = "badtobefat.ru"
+	api  = "http://" + host + "/bolt"
 	//Telefeedfile = "telefeedtst.bot"
-	Telefeedfile = "telefeed.bot"
+	//Telefeedfile = "telefeed.bot"
 	Vkwriterfile = "vkwriter.bot"
 	users        = "/usertg/"
 	pubNames     = "/pubNames/"
@@ -39,6 +40,13 @@ const (
 	NotFound     = "🇬🇧 Not found\n🇷🇺 Домен не найден"
 )
 
+var (
+	Telefeedfile = "telefeedtst.bot"
+)
+
 func init() {
-	log.SetOutput(ioutil.Discard)
+	if host == "badtobefat.ru" {
+		log.SetOutput(ioutil.Discard)
+		Telefeedfile = "telefeed.bot"
+	}
 }

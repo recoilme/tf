@@ -120,13 +120,29 @@ func saveposts(domain vkapi.Group, users map[int]bool) {
 	var lastPost = lastPostIdGet(domain)
 	log.Println("last", lastPost)
 	posts := vkapi.WallGet(domain.Gid * (-1))
+
 	last := len(posts) - 1
+	if last > 2 {
+		last = 2
+	}
 	for i := range posts {
+		if i > last {
+			break
+		}
 		post := posts[last-i]
 		if post.Id <= lastPost {
 			continue
 		}
 		lastPost = lastPostIdSet(domain, post.Id)
+		//ads
+		if post.MarkedAsAds == 1 {
+			break
+		}
+		if len(post.Attachments) == 0 && post.Text == "" {
+			// no text no attachments
+			break
+		}
+		fmt.Printf("Post: %+v\n", post)
 		url := fmt.Sprintf("http://badtobefat.ru/bolt/%d/%s", post.OwnerID*(-1), fmt.Sprintf("%010d", post.Id))
 		b, _ := json.Marshal(post)
 		httputils.HttpPut(url, nil, b)
@@ -186,6 +202,7 @@ func vkdomains() (domains []vkapi.Group) {
 
 func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	log.Println("pubpost", p.Id)
+	var counter = 0
 	var vkcnt int64 = -1001067277325 //myakotka
 	//var fwd int64 = 366035536        //telefeed
 
@@ -203,13 +220,19 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 		msg.DisableNotification = true
 		res, err := wrbot.Send(msg)
 		if err == nil {
+			time.Sleep(500 * time.Millisecond)
 			for user := range users {
 				log.Println(user)
 				bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+				counter = counter + 1
+				if counter%30 == 0 {
+					time.Sleep(300 * time.Millisecond)
+				}
 			}
 		}
 	}
 	for i := range p.Attachments {
+		time.Sleep(500 * time.Millisecond)
 		att := p.Attachments[i]
 		log.Println(att.Type)
 		switch att.Type {
@@ -240,6 +263,10 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 					for user := range users {
 
 						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+						counter = counter + 1
+						if counter%30 == 0 {
+							time.Sleep(300 * time.Millisecond)
+						}
 					}
 				}
 			}
@@ -255,6 +282,10 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				if err == nil {
 					for user := range users {
 						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+						counter = counter + 1
+						if counter%30 == 0 {
+							time.Sleep(300 * time.Millisecond)
+						}
 					}
 				}
 				continue
@@ -283,6 +314,10 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 						if err == nil {
 							for user := range users {
 								bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+								counter = counter + 1
+								if counter%30 == 0 {
+									time.Sleep(300 * time.Millisecond)
+								}
 							}
 						}
 					}
@@ -300,6 +335,10 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				if err == nil {
 					for user := range users {
 						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+						counter = counter + 1
+						if counter%30 == 0 {
+							time.Sleep(300 * time.Millisecond)
+						}
 					}
 				}
 			}
@@ -318,6 +357,10 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 						for user := range users {
 
 							bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+							counter = counter + 1
+							if counter%30 == 0 {
+								time.Sleep(300 * time.Millisecond)
+							}
 						}
 					}
 				}
@@ -333,6 +376,10 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				if err == nil {
 					for user := range users {
 						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
+						counter = counter + 1
+						if counter%30 == 0 {
+							time.Sleep(300 * time.Millisecond)
+						}
 					}
 				}
 			}

@@ -131,7 +131,7 @@ func saveposts(link string, users map[int]bool) {
 		last = 2
 	}
 	for i := range feed.Items {
-		if i == last {
+		if i > last {
 			break
 		}
 		item := feed.Items[last-i]
@@ -235,6 +235,7 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 				if err == nil {
+					time.Sleep(300 * time.Millisecond)
 					for user := range users {
 						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
 					}
@@ -249,6 +250,7 @@ func pubpost(domain string, p *gofeed.Item, users map[int]bool) {
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
 				if err == nil {
+					time.Sleep(300 * time.Millisecond)
 					for user := range users {
 						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
 					}
@@ -435,7 +437,7 @@ func extractLinks(s string) (links []string) {
 		switch {
 		case tt == html.ErrorToken:
 			// End of the document, we're done
-			log.Println("err tok")
+			//log.Println("err tok")
 			return
 		case tt == html.StartTagToken || tt == html.SelfClosingTagToken:
 			t := z.Token()

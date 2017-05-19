@@ -250,3 +250,11 @@ func TestInst(t *testing.T) {
 	//findFeed("https://web.stagram.com/rss/n/"+parts[1], msg, delete)
 	//}
 }
+
+func TestPublicFmt(t *testing.T) {
+	domain := "public48287065"
+	res := vkapi.GroupsGetById(domain)
+	if len(res) == 0 {
+		t.Error("public48287065, got ", res)
+	}
+}

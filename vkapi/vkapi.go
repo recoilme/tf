@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"strings"
+
+	"log"
+
 	"github.com/recoilme/tf/httputils"
 )
 
@@ -156,7 +160,7 @@ type Link struct {
 // WallGet return array of Post by domain name
 // get ownerid or screenname as param
 func WallGet(domain interface{}) []Post {
-	posts := make([]Post, 0, 20)
+
 	var url string
 	//https://api.vk.com/method/wall.get?owner_id=-125698500&v=5.63
 	switch domain.(type) {
@@ -169,8 +173,13 @@ func WallGet(domain interface{}) []Post {
 	case string:
 		url = fmt.Sprintf("https://api.vk.com/method/wall.get?domain=%s&v=5.63", domain.(string))
 	default:
-		return posts
+		return make([]Post, 0, 0)
 	}
+	return PostsGet(url)
+}
+
+func PostsGet(url string) []Post {
+	posts := make([]Post, 0, 20)
 	body := httputils.HttpGet(url, nil)
 	if body != nil {
 		var postRes PostResponse
@@ -186,6 +195,10 @@ func WallGet(domain interface{}) []Post {
 
 // GroupsGetById return groups, where name = shortname or vk public id
 func GroupsGetById(name string) (groups []Group) {
+	if strings.HasPrefix(name, "public") {
+		name = name[len("public"):]
+		log.Println("name", name)
+	}
 	url := "https://api.vk.com/method/groups.getById?group_id=" + name + "&fields=members_count,description"
 	body := httputils.HttpGet(url, nil)
 	if body != nil {
