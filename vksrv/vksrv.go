@@ -202,7 +202,7 @@ func vkdomains() (domains []vkapi.Group) {
 
 func forward(users map[int]bool, msgID int, e error) {
 	if e != nil {
-		fmt.Printf("Error: %s\n", e)
+		fmt.Printf("Error post to myakotka: %s\n", e.Error)
 		return
 	}
 	time.Sleep(300 * time.Millisecond)
@@ -211,10 +211,10 @@ func forward(users map[int]bool, msgID int, e error) {
 		//log.Println(user)
 		_, err := bot.Send(tgbotapi.NewForward(int64(user), params.MyakotkaId, msgID))
 		if err != nil {
-			fmt.Printf("Error: %s\n", err)
+			fmt.Printf("Error post to user:%d %s\n", int64(user), err)
 		}
 		counter = counter + 1
-		if counter%30 == 0 {
+		if counter%10 == 0 {
 			time.Sleep(300 * time.Millisecond)
 		}
 	}
@@ -222,6 +222,7 @@ func forward(users map[int]bool, msgID int, e error) {
 
 func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	log.Println("pubpost", p.Id)
+	time.Sleep(2 * time.Second)
 	//var vkcnt int64 = -1001067277325 //myakotka
 	//var fwd int64 = 366035536        //telefeed
 	var t = strings.Replace(p.Text, "&lt;br&gt;", "\n", -1)

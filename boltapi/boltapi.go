@@ -124,7 +124,7 @@ func BoltAPI(db *bolt.DB, w http.ResponseWriter, r *http.Request) {
 		cnt := r.URL.Query().Get("cnt")
 		var order = r.URL.Query().Get("order")
 		var vals = r.URL.Query().Get("vals")
-		var max = 1000
+		var max = 100000
 		var prefix []byte
 		m, e := strconv.Atoi(cnt)
 		if e == nil {
