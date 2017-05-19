@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	host = "localhost:5000"
-	//host         = "badtobefat.ru"
+	//host = "localhost:5000"
+	host         = "badtobefat.ru"
 	api          = "http://" + host + "/bolt"
 	Vkwriterfile = "vkwriter.bot"
 	users        = "/usertg/"
