@@ -200,12 +200,30 @@ func vkdomains() (domains []vkapi.Group) {
 	return
 }
 
+func forward(users map[int]bool, msgID int, e error) {
+	if e != nil {
+		fmt.Printf("Error: %s\n", e)
+		return
+	}
+	time.Sleep(300 * time.Millisecond)
+	var counter = 0
+	for user := range users {
+		//log.Println(user)
+		_, err := bot.Send(tgbotapi.NewForward(int64(user), params.MyakotkaId, msgID))
+		if err != nil {
+			fmt.Printf("Error: %s\n", err)
+		}
+		counter = counter + 1
+		if counter%30 == 0 {
+			time.Sleep(300 * time.Millisecond)
+		}
+	}
+}
+
 func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	log.Println("pubpost", p.Id)
-	var counter = 0
-	var vkcnt int64 = -1001067277325 //myakotka
+	//var vkcnt int64 = -1001067277325 //myakotka
 	//var fwd int64 = 366035536        //telefeed
-
 	var t = strings.Replace(p.Text, "&lt;br&gt;", "\n", -1)
 	if t != "" {
 		t = t + "\n"
@@ -213,23 +231,15 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	link := fmt.Sprintf("vk.com/wall%d_%d", domain.Gid*(-1), p.Id)
 	tag := strings.Replace(domain.ScreenName, ".", "", -1)
 	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
-	if len(p.Attachments) == 0 || len(t) > 250 {
-		msg := tgbotapi.NewMessage(vkcnt, t+appendix)
+	if len(p.Attachments) == 0 || len([]rune(t)) > 200 {
+		msg := tgbotapi.NewMessage(params.MyakotkaId, t+appendix)
 		t = ""
 		msg.DisableWebPagePreview = true
 		msg.DisableNotification = true
 		res, err := wrbot.Send(msg)
-		if err == nil {
-			time.Sleep(500 * time.Millisecond)
-			for user := range users {
-				log.Println(user)
-				bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
-				counter = counter + 1
-				if counter%30 == 0 {
-					time.Sleep(300 * time.Millisecond)
-				}
-			}
-		}
+
+		forward(users, res.MessageID, err)
+
 	}
 	for i := range p.Attachments {
 		time.Sleep(500 * time.Millisecond)
@@ -251,7 +261,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 			b := httputils.HttpGet(photo, nil)
 			if b != nil {
 				bb := tgbotapi.FileBytes{Name: photo, Bytes: b}
-				msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
+				msg := tgbotapi.NewPhotoUpload(params.MyakotkaId, bb)
 				if i == 0 {
 					msg.Caption = t + appendix
 				} else {
@@ -259,35 +269,22 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				}
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
-				if err == nil {
-					for user := range users {
 
-						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
-						counter = counter + 1
-						if counter%30 == 0 {
-							time.Sleep(300 * time.Millisecond)
-						}
-					}
-				}
+				forward(users, res.MessageID, err)
+
 			}
 		case "video":
 			//fmt.Printf("%+v\n", att.Video)
 			urlv := fmt.Sprintf("https://vk.com/video%d_%d", att.Video.OwnerID, att.Video.ID)
 			if att.Video.Duration > 600 {
 				//send url
-				msg := tgbotapi.NewMessage(vkcnt, urlv+"\n"+appendix)
+				msg := tgbotapi.NewMessage(params.MyakotkaId, urlv+"\n"+appendix)
 				msg.DisableWebPagePreview = false
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
-				if err == nil {
-					for user := range users {
-						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
-						counter = counter + 1
-						if counter%30 == 0 {
-							time.Sleep(300 * time.Millisecond)
-						}
-					}
-				}
+
+				forward(users, res.MessageID, err)
+
 				continue
 			}
 			b := httputils.HttpGet(urlv, nil)
@@ -307,19 +304,13 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 						//post video
 						vidb := httputils.HttpGet(s, nil)
 						bb := tgbotapi.FileBytes{Name: s, Bytes: vidb}
-						msg := tgbotapi.NewVideoUpload(vkcnt, bb)
+						msg := tgbotapi.NewVideoUpload(params.MyakotkaId, bb)
 						msg.Caption = appendix
 						msg.DisableNotification = true
 						res, err := wrbot.Send(msg)
-						if err == nil {
-							for user := range users {
-								bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
-								counter = counter + 1
-								if counter%30 == 0 {
-									time.Sleep(300 * time.Millisecond)
-								}
-							}
-						}
+
+						forward(users, res.MessageID, err)
+
 					}
 				}
 			}
@@ -328,19 +319,13 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 			b := httputils.HttpGet(att.Doc.URL, nil)
 			if b != nil {
 				bb := tgbotapi.FileBytes{Name: "tmp." + att.Doc.Ext, Bytes: b}
-				msg := tgbotapi.NewDocumentUpload(vkcnt, bb)
+				msg := tgbotapi.NewDocumentUpload(params.MyakotkaId, bb)
 				msg.Caption = appendix
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
-				if err == nil {
-					for user := range users {
-						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
-						counter = counter + 1
-						if counter%30 == 0 {
-							time.Sleep(300 * time.Millisecond)
-						}
-					}
-				}
+
+				forward(users, res.MessageID, err)
+
 			}
 		case "link":
 
@@ -349,39 +334,25 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				b := httputils.HttpGet(att.Link.Photo.Photo604, nil)
 				if b != nil {
 					bb := tgbotapi.FileBytes{Name: att.Link.Photo.Photo604, Bytes: b}
-					msg := tgbotapi.NewPhotoUpload(vkcnt, bb)
+					msg := tgbotapi.NewPhotoUpload(params.MyakotkaId, bb)
 					msg.Caption = att.Link.Title + "\n" + att.Link.Description + "\n" + att.Link.URL + "\n" + appendix
 					msg.DisableNotification = true
 					res, err := wrbot.Send(msg)
-					if err == nil {
-						for user := range users {
 
-							bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
-							counter = counter + 1
-							if counter%30 == 0 {
-								time.Sleep(300 * time.Millisecond)
-							}
-						}
-					}
+					forward(users, res.MessageID, err)
+
 				}
 
 			} else {
 				var desc = ""
 				desc = att.Link.Title + "\n" + att.Link.URL + "\n" + appendix
 
-				msg := tgbotapi.NewMessage(vkcnt, desc)
+				msg := tgbotapi.NewMessage(params.MyakotkaId, desc)
 				msg.DisableWebPagePreview = false
 				msg.DisableNotification = true
 				res, err := wrbot.Send(msg)
-				if err == nil {
-					for user := range users {
-						bot.Send(tgbotapi.NewForward(int64(user), vkcnt, res.MessageID))
-						counter = counter + 1
-						if counter%30 == 0 {
-							time.Sleep(300 * time.Millisecond)
-						}
-					}
-				}
+				forward(users, res.MessageID, err)
+
 			}
 		}
 	}

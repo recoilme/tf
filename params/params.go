@@ -21,6 +21,7 @@ const (
 	links        = "/links/"
 	ShortUrl     = "https://www.googleapis.com/urlshortener/v1/url?key=AIzaSyCTmUsTGqjl7iWJLiJisrejgTNamp7bfIA"
 	TgApi        = "https://api.telegram.org"
+	MyakotkaId   = -1001067277325
 	BaseUri      = api + "/"
 	Publics      = api + pubNames
 	Feeds        = api + feeds
