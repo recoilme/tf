@@ -15,7 +15,7 @@ func TestFeeds(t *testing.T) {
 	var url = "https://api.vk.com/method/wall.get?domain=driveru&v=5.63"
 	var offset = 0
 	//count := 50
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 1; i++ {
 		feed := url + "&offset=" + strconv.Itoa(offset)
 		//fmt.Println(feed)
 		TesPosts(feed)
@@ -24,6 +24,18 @@ func TestFeeds(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
+}
+
+func TestDonetsk(t *testing.T) {
+	s := vkapi.WallGet(23502694)
+	for _, p := range s {
+		var i = 30
+		if len(p.Text) < 30 {
+			i = len(p.Text)
+		}
+		log.Println(p.Id, p.Text[:i])
+	}
+	//log.Println(s)
 }
 
 func TesPosts(url string) {
@@ -47,7 +59,7 @@ func TesPosts(url string) {
 			}
 		}
 		if href != "" && virality > 0 {
-			log.Println(href + "\t" + strconv.Itoa(virality))
+			//log.Println(href + "\t" + strconv.Itoa(virality))
 		}
 		i++
 	}

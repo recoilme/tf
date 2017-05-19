@@ -122,8 +122,8 @@ func saveposts(domain vkapi.Group, users map[int]bool) {
 	posts := vkapi.WallGet(domain.Gid * (-1))
 
 	last := len(posts) - 1
-	if last > 2 {
-		last = 2
+	if last > 5 {
+		last = 5
 	}
 	for i := range posts {
 		if i > last {
@@ -136,13 +136,13 @@ func saveposts(domain vkapi.Group, users map[int]bool) {
 		lastPost = lastPostIdSet(domain, post.Id)
 		//ads
 		if post.MarkedAsAds == 1 {
-			break
+			continue
 		}
 		if len(post.Attachments) == 0 && post.Text == "" {
 			// no text no attachments
-			break
+			continue
 		}
-		fmt.Printf("Post: %+v\n", post)
+		//fmt.Printf("Post: %+v\n", post)
 		url := fmt.Sprintf("http://badtobefat.ru/bolt/%d/%s", post.OwnerID*(-1), fmt.Sprintf("%010d", post.Id))
 		b, _ := json.Marshal(post)
 		httputils.HttpPut(url, nil, b)

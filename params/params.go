@@ -7,10 +7,8 @@ import (
 
 const (
 	//host = "localhost:5000"
-	host = "badtobefat.ru"
-	api  = "http://" + host + "/bolt"
-	//Telefeedfile = "telefeedtst.bot"
-	//Telefeedfile = "telefeed.bot"
+	host         = "badtobefat.ru"
+	api          = "http://" + host + "/bolt"
 	Vkwriterfile = "vkwriter.bot"
 	users        = "/usertg/"
 	pubNames     = "/pubNames/"
