@@ -25,7 +25,10 @@ const (
 )
 
 var (
-	bot, wrbot *tgbotapi.BotAPI
+	bot, wrbot  *tgbotapi.BotAPI
+	forbidden         = map[int64]bool{}
+	lastUID     int64 = 0
+	fwdPostTime       = time.Now()
 )
 
 func main() {
@@ -212,7 +215,7 @@ func saveposts(domain vkapi.Group, users map[int]bool) {
 		httputils.HttpPut(url, nil, b)
 		log.Println(post.Id)
 		pubpost(domain, post, users)
-		break
+		//break
 	}
 }
 
@@ -283,28 +286,43 @@ func vkdomains() (domains []vkapi.Group) {
 
 func forward(users map[int]bool, msgID int, e error, storeId int64) {
 	if e != nil {
-		fmt.Printf("Error post to myakotka: %s\n", e.Error)
+		fmt.Printf("Error post to myakotka: %+v\n", e)
 		return
 	}
-	var forbiddenUser int64
+	var postNum = 0
 	for user := range users {
-		if forbiddenUser == int64(user) {
+		uid := int64(user)
+		if forbidden[uid] == true {
 			continue
 		}
-		time.Sleep(600 * time.Millisecond)
-		_, err := bot.Send(tgbotapi.NewForward(int64(user), storeId, msgID))
+
+		if lastUID == uid {
+			fromLastPost := int64((time.Now().Sub(fwdPostTime)).Seconds() * 1000)
+			//fmt.Printf("From Last post%d\n", fromLastPost)
+			dif := time.Duration(1100-fromLastPost) * time.Millisecond
+			//fmt.Printf("Sleep time ms %s\n", dif)
+			time.Sleep(dif)
+		}
+		lastUID = uid
+		_, err := bot.Send(tgbotapi.NewForward(uid, storeId, msgID))
+		fwdPostTime = time.Now()
 		if err != nil {
 			s := err.Error()
-			fmt.Printf("Error post to user:%d %s\n", int64(user), s)
-			if !strings.Contains(s, "forbidden") {
-				time.Sleep(60 * time.Second)
+			fmt.Printf("Error post to user:%d %s\n", uid, s)
+			if strings.Contains(s, "Many") {
+				time.Sleep(300 * time.Second)
 			} else {
-				forbiddenUser = int64(user)
+				if strings.Contains(s, "forbidden") {
+					forbidden[int64(user)] = true
+				}
 			}
 		} else {
-			fmt.Printf("Ok\n")
+			fmt.Printf("%s Ok, uid:%d\n", time.Now().Format("04:05"), uid)
 		}
-
+		postNum++
+		if postNum%28 == 0 {
+			time.Sleep(1 * time.Second)
+		}
 	}
 }
 
@@ -316,8 +334,7 @@ func getStoreId() int64 {
 func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	log.Println("pubpost", p.Id)
 	var storeId = getStoreId()
-	time.Sleep(1 * time.Second)
-	//time.Sleep(500 * time.Millisecond)
+	//time.Sleep(300 * time.Millisecond)
 	//var vkcnt int64 = -1001067277325 //myakotka
 	//var fwd int64 = 366035536        //telefeed
 	var t = strings.Replace(p.Text, "&lt;br&gt;", "\n", -1)
@@ -338,7 +355,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 
 	}
 	for i := range p.Attachments {
-		time.Sleep(100 * time.Millisecond)
+		//time.Sleep(100 * time.Millisecond)
 		storeId = getStoreId()
 		att := p.Attachments[i]
 		log.Println(att.Type)

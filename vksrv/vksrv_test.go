@@ -10,6 +10,8 @@ import (
 
 	"strings"
 
+	"fmt"
+
 	"github.com/recoilme/tf/httputils"
 	"github.com/recoilme/tf/params"
 	"github.com/recoilme/tf/vkapi"
@@ -91,4 +93,12 @@ func TesPosts(url string) {
 		}
 		i++
 	}
+}
+
+func TestTim(tst *testing.T) {
+	t := time.Now()
+	time.Sleep(800 * time.Millisecond)
+	tt := time.Now().Sub(t)
+	fmt.Println(tt.Seconds() * 1000)
+
 }
