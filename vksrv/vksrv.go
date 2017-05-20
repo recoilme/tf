@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	"strings"
@@ -61,6 +62,45 @@ func forever() {
 		parseVk()
 		time.Sleep(1200 * time.Second)
 	}
+}
+
+func sendAll() {
+	var users []string
+	url := params.BaseUri + "usertg"
+	log.Println("sendAll", url)
+	resp, err := http.Post(url, "application/json", nil)
+	if err == nil {
+		defer resp.Body.Close()
+		body, _ := ioutil.ReadAll(resp.Body)
+		json.Unmarshal(body, &users)
+
+		b, _ := tgbotapi.NewBotAPI("364483768:AAFhyU95D609MLVMQNNFzd3ZOAxIgyIHMN0")
+		var start = false
+		for _, user := range users {
+			if user == "397314920" || start {
+				start = true
+			} else {
+				continue
+			}
+			uid, _ := strconv.ParseInt(user, 10, 64)
+			log.Println(user, uid)
+
+			txt := "Извините, пожалуйста, за перебои в работе сервиса @telefeedbot(.\n\nЕжесекундно в ВКонтакте появляются сотни новых постов, и мы не успеваем их отправлять всем подписчикам всвязи с ограничениями апи телеграм (ну или из-за кривых рук).\n\nПытаюсь найти решение.\n\nСпасибо за Ваше терпение!"
+			msg := tgbotapi.NewMessage(uid, txt)
+			msg.DisableWebPagePreview = true
+			msg.DisableNotification = true
+			_, err := b.Send(msg)
+			if err == nil {
+				log.Println("Ok")
+			} else {
+				log.Println("Error")
+			}
+			time.Sleep(1000 * time.Millisecond)
+			break
+
+		}
+	}
+
 }
 
 func parseVk() {
@@ -246,21 +286,25 @@ func forward(users map[int]bool, msgID int, e error, storeId int64) {
 		fmt.Printf("Error post to myakotka: %s\n", e.Error)
 		return
 	}
-	time.Sleep(100 * time.Millisecond)
-	var counter = 0
+	var forbiddenUser int64
 	for user := range users {
-		//log.Println(user)
+		if forbiddenUser == int64(user) {
+			continue
+		}
+		time.Sleep(600 * time.Millisecond)
 		_, err := bot.Send(tgbotapi.NewForward(int64(user), storeId, msgID))
 		if err != nil {
-			fmt.Printf("Error post to user:%d %s\n", int64(user), err)
-			time.Sleep(3 * time.Second)
+			s := err.Error()
+			fmt.Printf("Error post to user:%d %s\n", int64(user), s)
+			if !strings.Contains(s, "forbidden") {
+				time.Sleep(60 * time.Second)
+			} else {
+				forbiddenUser = int64(user)
+			}
 		} else {
 			fmt.Printf("Ok\n")
 		}
-		counter = counter + 1
-		if counter%10 == 0 {
-			time.Sleep(300 * time.Millisecond)
-		}
+
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 )
 
 func TestDonvk(t *testing.T) {
+	//sendAll()
 	log.Println("TestDonvk")
 	posts := vkapi.WallGet(1257785 * (-1))
 	log.Println("len", len(posts))
@@ -38,7 +39,7 @@ func TestDonvk(t *testing.T) {
 				}
 			}
 		}
-
+		break
 		//time.Sleep(100 * time.Millisecond)
 	}
 
