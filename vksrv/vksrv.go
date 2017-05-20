@@ -269,7 +269,7 @@ func getStoreId() int64 {
 func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	log.Println("pubpost", p.Id)
 	var storeId = getStoreId()
-	time.Sleep(2 * time.Second)
+	//time.Sleep(2 * time.Second)
 	//var vkcnt int64 = -1001067277325 //myakotka
 	//var fwd int64 = 366035536        //telefeed
 	var t = strings.Replace(p.Text, "&lt;br&gt;", "\n", -1)
@@ -290,7 +290,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 
 	}
 	for i := range p.Attachments {
-		time.Sleep(500 * time.Millisecond)
+		//time.Sleep(500 * time.Millisecond)
 		storeId = getStoreId()
 		att := p.Attachments[i]
 		log.Println(att.Type)

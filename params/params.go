@@ -42,7 +42,7 @@ const (
 var (
 	Telefeedfile = "telefeedtst.bot"
 	Stores       = [...]string{"@telefeedcontent1", "@telefeedcontent2", "@telefeedcontent3"}
-	StoreIds     = [...]int64{-1001140338639, -1001144965998, -1001122084977}
+	StoreIds     = [...]int64{-1001140338639, -1001144965998, -1001122084977, -1001121449455, -1001147806509, -1001069985583, -1001128095164}
 )
 
 func init() {
