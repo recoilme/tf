@@ -172,7 +172,7 @@ func saveposts(domain vkapi.Group, users map[int]bool) {
 		httputils.HttpPut(url, nil, b)
 		log.Println(post.Id)
 		pubpost(domain, post, users)
-		//break
+		break
 	}
 }
 
@@ -253,7 +253,9 @@ func forward(users map[int]bool, msgID int, e error, storeId int64) {
 		_, err := bot.Send(tgbotapi.NewForward(int64(user), storeId, msgID))
 		if err != nil {
 			fmt.Printf("Error post to user:%d %s\n", int64(user), err)
-			time.Sleep(2000 * time.Millisecond)
+			time.Sleep(3 * time.Second)
+		} else {
+			fmt.Printf("Ok\n")
 		}
 		counter = counter + 1
 		if counter%10 == 0 {
@@ -270,8 +272,8 @@ func getStoreId() int64 {
 func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 	log.Println("pubpost", p.Id)
 	var storeId = getStoreId()
-	//time.Sleep(1 * time.Second)
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1 * time.Second)
+	//time.Sleep(500 * time.Millisecond)
 	//var vkcnt int64 = -1001067277325 //myakotka
 	//var fwd int64 = 366035536        //telefeed
 	var t = strings.Replace(p.Text, "&lt;br&gt;", "\n", -1)
