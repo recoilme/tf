@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -50,11 +49,12 @@ func main() {
 		log.Fatal(err)
 	}
 	wrbot, err = tgbotapi.NewBotAPI(wrtoken)
-	wrbot.Debug = true
+	//wrbot.Debug = true
+	//bot.Debug = true
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%v+\n", time.Now())
+	//fmt.Printf("%v+\n", time.Now())
 	go forever()
 	select {} // block forever
 }
@@ -129,20 +129,9 @@ func parseVk() {
 
 		//time.Sleep(100 * time.Millisecond)
 	}
-	/*
-		domains := vkdomains()
-		for i := range domains {
-			domain := domains[i]
-			log.Println(domain.ScreenName)
-			users := domUsers(domains[i])
-			if len(users) > 0 {
-				saveposts(domain, users)
-			}
-			time.Sleep(1 * time.Second)
-		}*/
 }
 
-func domUsers(domain vkapi.Group) (users map[int]bool) {
+func domUsers(domain vkapi.Group) (users map[int64]bool) {
 	mask := params.Subs + "%d"
 	url := fmt.Sprintf(mask, domain.Gid)
 	log.Println(url)
@@ -182,7 +171,7 @@ func lastPostIdSet(domain vkapi.Group, lastPostId int) int {
 	return postId
 }
 
-func saveposts(domain vkapi.Group, users map[int]bool) {
+func saveposts(domain vkapi.Group, users map[int64]bool) {
 	log.Println(domain)
 	var lastPost = lastPostIdGet(domain)
 	log.Println("last", lastPost)
@@ -284,9 +273,19 @@ func vkdomains() (domains []vkapi.Group) {
 	return
 }
 
-func forward(users map[int]bool, msgID int, e error, storeId int64) {
+func Forward(users map[int64]bool, fwdmsg tgbotapi.Message, e error, disableWebPagePreview bool, storeId int64) {
+	if len(users) <= 0 {
+		return
+	}
+
+	//time.Sleep(1 * time.Second)
+	//fmt.Printf("msg: %+v\n", fwdmsg)
 	if e != nil {
-		fmt.Printf("Error post to myakotka: %+v\n", e)
+		se := e.Error()
+		fmt.Printf("Error post to myakotka: %+v\n", se)
+		if strings.Contains(se, "orbidden") {
+			forbidden[storeId] = true
+		}
 		return
 	}
 	var postNum = 0
@@ -299,20 +298,65 @@ func forward(users map[int]bool, msgID int, e error, storeId int64) {
 		if lastUID == uid {
 			fromLastPost := int64((time.Now().Sub(fwdPostTime)).Seconds() * 1000)
 			//fmt.Printf("From Last post%d\n", fromLastPost)
-			dif := time.Duration(1100-fromLastPost) * time.Millisecond
+			dif := time.Duration(1200-fromLastPost) * time.Millisecond
 			//fmt.Printf("Sleep time ms %s\n", dif)
 			time.Sleep(dif)
 		}
 		lastUID = uid
-		_, err := bot.Send(tgbotapi.NewForward(uid, storeId, msgID))
+		var err error
+
+		var msgType = "text"
+		if fwdmsg.Photo != nil {
+			msgType = "photo"
+		} else if fwdmsg.Video != nil {
+			msgType = "video"
+		} else if fwdmsg.Document != nil {
+			msgType = "doc"
+		}
+		switch msgType {
+		case "photo":
+			var photos []tgbotapi.PhotoSize
+			photos = *fwdmsg.Photo
+			var fileID = ""
+			for _, photo := range photos {
+				fileID = photo.FileID
+			}
+			if fileID == "" {
+				continue
+			}
+			msg := tgbotapi.NewPhotoShare(uid, fileID)
+			msg.Caption = fwdmsg.Caption
+			msg.DisableNotification = true
+			_, err = bot.Send(msg)
+		case "video":
+			vid := *fwdmsg.Video
+			msg := tgbotapi.NewVideoShare(uid, vid.FileID)
+			msg.DisableNotification = true
+
+			msg.Caption = fwdmsg.Caption
+			_, err = bot.Send(msg)
+		case "doc":
+			doc := fwdmsg.Document
+			msg := tgbotapi.NewDocumentShare(uid, doc.FileID)
+			msg.Caption = fwdmsg.Caption
+			msg.DisableNotification = true
+			_, err = bot.Send(msg)
+		default:
+			//txt
+			msg := tgbotapi.NewMessage(uid, fwdmsg.Text)
+			msg.DisableNotification = true
+			msg.DisableWebPagePreview = disableWebPagePreview
+			_, err = bot.Send(msg)
+		}
+
 		fwdPostTime = time.Now()
 		if err != nil {
 			s := err.Error()
 			fmt.Printf("Error post to user:%d %s\n", uid, s)
 			if strings.Contains(s, "Many") {
-				time.Sleep(300 * time.Second)
+				time.Sleep(600 * time.Second)
 			} else {
-				if strings.Contains(s, "forbidden") {
+				if strings.Contains(s, "orbidden") {
 					forbidden[int64(user)] = true
 				}
 			}
@@ -320,43 +364,64 @@ func forward(users map[int]bool, msgID int, e error, storeId int64) {
 			fmt.Printf("%s Ok, uid:%d\n", time.Now().Format("04:05"), uid)
 		}
 		postNum++
-		if postNum%28 == 0 {
+		if postNum%10 == 0 {
 			time.Sleep(1 * time.Second)
 		}
+		break
 	}
 }
 
-func getStoreId() int64 {
-	rand.Seed(time.Now().Unix())
-	return params.StoreIds[rand.Intn(len(params.StoreIds))]
-}
+//func getStoreId() int64 {
+//juliam1806 366035536
+//id := int64(366035536)
+//rand.Seed(time.Now().Unix())
+//id = params.StoreIds[rand.Intn(len(params.StoreIds))]
+//return id
+//}
 
-func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
+func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
+
 	log.Println("pubpost", p.Id)
-	var storeId = getStoreId()
-	//time.Sleep(300 * time.Millisecond)
-	//var vkcnt int64 = -1001067277325 //myakotka
-	//var fwd int64 = 366035536        //telefeed
+	if len(users) == 0 {
+		return
+	}
+	//first user - store content
+	var storeId int64
+	//fmt.Printf("storeid%d len %d\n", storeId, len(users))
+	for user := range users {
+		if forbidden[user] == true {
+			continue
+		}
+		storeId = user
+		break
+	}
+	if storeId == 0 {
+		//all users blocks bot
+		return
+	}
+	delete(users, storeId)
+	//fmt.Printf("storeid%d len %d\n", storeId, len(users))
+	time.Sleep(1 * time.Second)
 	var t = strings.Replace(p.Text, "&lt;br&gt;", "\n", -1)
 	if t != "" {
 		t = t + "\n"
 	}
 	link := fmt.Sprintf("vk.com/wall%d_%d", domain.Gid*(-1), p.Id)
 	tag := strings.Replace(domain.ScreenName, ".", "", -1)
+	fmt.Printf("tag:%s\n", tag)
 	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
 	if len(p.Attachments) == 0 || len([]rune(t)) > 200 {
 		msg := tgbotapi.NewMessage(storeId, t+appendix)
 		t = ""
 		msg.DisableWebPagePreview = true
 		msg.DisableNotification = true
-		res, err := wrbot.Send(msg)
+		res, err := bot.Send(msg)
 
-		forward(users, res.MessageID, err, storeId)
+		Forward(users, res, err, true, storeId)
 
 	}
 	for i := range p.Attachments {
-		//time.Sleep(100 * time.Millisecond)
-		storeId = getStoreId()
+		time.Sleep(1 * time.Second)
 		att := p.Attachments[i]
 		log.Println(att.Type)
 		switch att.Type {
@@ -382,9 +447,9 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 					msg.Caption = appendix
 				}
 				msg.DisableNotification = true
-				res, err := wrbot.Send(msg)
+				res, err := bot.Send(msg)
 
-				forward(users, res.MessageID, err, storeId)
+				Forward(users, res, err, true, storeId)
 
 			}
 		case "video":
@@ -395,9 +460,9 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				msg := tgbotapi.NewMessage(storeId, urlv+"\n"+appendix)
 				msg.DisableWebPagePreview = false
 				msg.DisableNotification = true
-				res, err := wrbot.Send(msg)
+				res, err := bot.Send(msg)
 
-				forward(users, res.MessageID, err, storeId)
+				Forward(users, res, err, false, storeId)
 
 				continue
 			}
@@ -421,9 +486,9 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 						msg := tgbotapi.NewVideoUpload(storeId, bb)
 						msg.Caption = appendix
 						msg.DisableNotification = true
-						res, err := wrbot.Send(msg)
+						res, err := bot.Send(msg)
 
-						forward(users, res.MessageID, err, storeId)
+						Forward(users, res, err, false, storeId)
 
 					}
 				}
@@ -436,13 +501,12 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				msg := tgbotapi.NewDocumentUpload(storeId, bb)
 				msg.Caption = appendix
 				msg.DisableNotification = true
-				res, err := wrbot.Send(msg)
+				res, err := bot.Send(msg)
 
-				forward(users, res.MessageID, err, storeId)
+				Forward(users, res, err, false, storeId)
 
 			}
 		case "link":
-
 			if att.Link.Photo.Photo604 != "" && att.Link.Photo.Width > 400 && att.Link.Photo.Height > 400 {
 				//link with photo
 				b := httputils.HttpGet(att.Link.Photo.Photo604, nil)
@@ -452,9 +516,9 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 					msg := tgbotapi.NewPhotoUpload(storeId, bb)
 					msg.Caption = att.Link.Title + "\n" + att.Link.Description + "\n" + att.Link.URL + "\n" + appendix
 					msg.DisableNotification = true
-					res, err := wrbot.Send(msg)
+					res, err := bot.Send(msg)
 
-					forward(users, res.MessageID, err, storeId)
+					Forward(users, res, err, true, storeId)
 
 				}
 
@@ -465,8 +529,8 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int]bool) {
 				msg := tgbotapi.NewMessage(storeId, desc)
 				msg.DisableWebPagePreview = false
 				msg.DisableNotification = true
-				res, err := wrbot.Send(msg)
-				forward(users, res.MessageID, err, storeId)
+				res, err := bot.Send(msg)
+				Forward(users, res, err, false, storeId)
 
 			}
 		}
