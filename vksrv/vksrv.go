@@ -294,6 +294,9 @@ func Forward(users map[int64]bool, fwdmsg tgbotapi.Message, e error, disableWebP
 		if forbidden[uid] == true {
 			continue
 		}
+		if uid == storeId {
+			continue
+		}
 
 		if lastUID == uid {
 			fromLastPost := int64((time.Now().Sub(fwdPostTime)).Seconds() * 1000)
@@ -354,6 +357,7 @@ func Forward(users map[int64]bool, fwdmsg tgbotapi.Message, e error, disableWebP
 			s := err.Error()
 			fmt.Printf("Error post to user:%d %s\n", uid, s)
 			if strings.Contains(s, "Many") {
+				fmt.Printf("%s to many request\n", time.Now().Format("15:04:05"))
 				time.Sleep(600 * time.Second)
 			} else {
 				if strings.Contains(s, "orbidden") {
@@ -361,23 +365,14 @@ func Forward(users map[int64]bool, fwdmsg tgbotapi.Message, e error, disableWebP
 				}
 			}
 		} else {
-			fmt.Printf("%s Ok, uid:%d\n", time.Now().Format("04:05"), uid)
+			fmt.Printf("%s Ok, uid:%d\n", time.Now().Format("15:04:05"), uid)
 		}
 		postNum++
 		if postNum%10 == 0 {
 			time.Sleep(1 * time.Second)
 		}
-		//break
 	}
 }
-
-//func getStoreId() int64 {
-//juliam1806 366035536
-//id := int64(366035536)
-//rand.Seed(time.Now().Unix())
-//id = params.StoreIds[rand.Intn(len(params.StoreIds))]
-//return id
-//}
 
 func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 
@@ -399,7 +394,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 		//all users blocks bot
 		return
 	}
-	delete(users, storeId)
+	//delete(users, storeId)
 	//fmt.Printf("storeid%d len %d\n", storeId, len(users))
 	time.Sleep(1 * time.Second)
 	var t = strings.Replace(p.Text, "&lt;br&gt;", "\n", -1)
@@ -408,7 +403,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 	}
 	link := fmt.Sprintf("vk.com/wall%d_%d", domain.Gid*(-1), p.Id)
 	tag := strings.Replace(domain.ScreenName, ".", "", -1)
-	fmt.Printf("tag:%s\n", tag)
+	fmt.Printf("%s tag:%s\n", time.Now().Format("15:04:05"), tag)
 	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
 	if len(p.Attachments) == 0 || len([]rune(t)) > 200 {
 		msg := tgbotapi.NewMessage(storeId, t+appendix)
