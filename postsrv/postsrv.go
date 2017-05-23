@@ -168,21 +168,6 @@ func sendMsg(msg tgMessage) {
 }
 
 func parse() {
-	feeds := getFeedNames()
-	for _, hash := range feeds {
-		//log.Println("getfeed", url, hash)
-		b := httputils.HttpGet(params.Feeds+hash, nil)
-		if b != nil {
-			url := string(b)
-			feedUsers := feedUsers(hash)
-			if len(feedUsers) == 0 {
-				continue
-			}
-			//log.Println("getfeed", url)
-			getFeedPosts(url, feedUsers)
-		}
-	}
-	time.Sleep(30 * time.Second)
 
 	publics := getPubNames()
 	for _, pubName := range publics {
@@ -199,6 +184,21 @@ func parse() {
 				//go MakeRequestDeferred(i, "22", nil, "", nil)
 				getPubPosts(public, pubusers)
 			}
+		}
+	}
+	time.Sleep(30 * time.Second)
+	feeds := getFeedNames()
+	for _, hash := range feeds {
+		//log.Println("getfeed", url, hash)
+		b := httputils.HttpGet(params.Feeds+hash, nil)
+		if b != nil {
+			url := string(b)
+			feedUsers := feedUsers(hash)
+			if len(feedUsers) == 0 {
+				continue
+			}
+			//log.Println("getfeed", url)
+			getFeedPosts(url, feedUsers)
 		}
 	}
 
@@ -443,8 +443,8 @@ func getFeedPosts(link string, users map[int64]bool) {
 	}
 
 	var last = len(feed.Items) - 1
-	if last > 20 {
-		last = 20
+	if last > 10 {
+		last = 10
 	}
 	for i := range feed.Items {
 		if i > last {
@@ -475,7 +475,7 @@ func GetMD5Hash(text string) string {
 
 func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
 
-	fmt.Printf("%s Feed:%s\n", time.Now().Format("15:04:05"), p.Link)
+	fmt.Printf("%s Feed: %s\n", time.Now().Format("15:04:05"), p.Link)
 	//var vkcnt int64 = -1001067277325 //myakotka
 	//log.Println("pubpost", p.GUID)
 
