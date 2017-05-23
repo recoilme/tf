@@ -228,7 +228,7 @@ func getpost() (post vkapi.Post) {
 }
 
 func getDomainNames() (domainNames []string) {
-	url := params.BaseUri + "pubNames/First?cnt=1000000&order=asc"
+	url := params.BaseUri + "pubNames/Last?cnt=1000000"
 	log.Println("vkdomains", url)
 	resp, err := http.Post(url, "application/json", nil)
 	if err == nil {
@@ -246,7 +246,7 @@ func getDomainNames() (domainNames []string) {
 
 func vkdomains() (domains []vkapi.Group) {
 	var domainNames []string
-	url := params.BaseUri + "pubNames/First?cnt=1000000&order=asc"
+	url := params.BaseUri + "pubNames/Last?cnt=1000000"
 	log.Println("vkdomains", url)
 	resp, err := http.Post(url, "application/json", nil)
 	if err == nil {
