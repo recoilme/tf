@@ -33,10 +33,11 @@ const (
 )
 
 type tgMessage struct {
-	msgtype string
-	userId  int64
-	txt     string
-	bytes   []byte
+	msgtype  string
+	userId   int64
+	txt      string
+	bytes    []byte
+	fileName string
 }
 
 type ShortUrl struct {
@@ -90,17 +91,18 @@ func forever() {
 	}
 }
 
-func send(msgtype string, users map[int64]bool, txt string, bytes []byte) {
+func send(msgtype string, users map[int64]bool, txt string, bytes []byte, fileName string) {
 	for user := range users {
 		_, forbid := forbidden.Get(strconv.FormatInt(user, 10))
 		if forbid {
 			continue
 		}
 		msg := tgMessage{
-			msgtype: msgtype,
-			userId:  user,
-			txt:     txt,
-			bytes:   bytes,
+			msgtype:  msgtype,
+			userId:   user,
+			txt:      txt,
+			bytes:    bytes,
+			fileName: fileName,
 		}
 		go sendMsg(msg)
 	}
@@ -126,19 +128,19 @@ func sendMsg(msg tgMessage) {
 
 			switch msg.msgtype {
 			case "photo":
-				m := tgbotapi.NewPhotoUpload(userId, tgbotapi.FileBytes{Name: "photo.png", Bytes: msg.bytes})
+				m := tgbotapi.NewPhotoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
 				m.DisableNotification = true
 				m.Caption = msg.txt
 				res, err := bot.Send(m)
 				checkErr(res, err, userId)
 			case "video":
-				m := tgbotapi.NewVideoUpload(userId, tgbotapi.FileBytes{Name: "video.mp4", Bytes: msg.bytes})
+				m := tgbotapi.NewVideoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
 				m.DisableNotification = true
 				m.Caption = msg.txt
 				res, err := bot.Send(m)
 				checkErr(res, err, userId)
 			case "doc":
-				m := tgbotapi.NewDocumentUpload(userId, tgbotapi.FileBytes{Name: "photo.gif", Bytes: msg.bytes})
+				m := tgbotapi.NewDocumentUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
 				m.DisableNotification = true
 				m.Caption = msg.txt
 				res, err := bot.Send(m)
@@ -346,7 +348,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 
 	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
 	if len(p.Attachments) == 0 || len([]rune(t)) > 200 {
-		send("txt", users, t+appendix, nil)
+		send("txt", users, t+appendix, nil, "")
 		t = ""
 	}
 	for i := range p.Attachments {
@@ -371,13 +373,13 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 				} else {
 					photoCaption = appendix
 				}
-				send("photo", users, photoCaption, b)
+				send("photo", users, photoCaption, b, photo)
 			}
 		case "video":
 			urlv := fmt.Sprintf("https://vk.com/video%d_%d", att.Video.OwnerID, att.Video.ID)
 			if att.Video.Duration > 600 {
 				//send url
-				send("txt", users, urlv+"\n"+appendix, nil)
+				send("txt", users, urlv+"\n"+appendix, nil, "")
 				continue
 			}
 			b := httputils.HttpGet(urlv, nil)
@@ -397,7 +399,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 						//post video
 						vidb := httputils.HttpGet(s, nil)
 						if vidb != nil {
-							send("video", users, appendix, vidb)
+							send("video", users, appendix, vidb, s)
 						}
 
 					}
@@ -406,7 +408,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 		case "doc":
 			b := httputils.HttpGet(att.Doc.URL, nil)
 			if b != nil {
-				send("doc", users, appendix, b)
+				send("doc", users, appendix, b, "tmp."+att.Doc.Ext)
 			}
 		case "link":
 			if att.Link.Photo.Photo604 != "" && att.Link.Photo.Width > 400 && att.Link.Photo.Height > 400 {
@@ -414,13 +416,13 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 				b := httputils.HttpGet(att.Link.Photo.Photo604, nil)
 				if b != nil {
 					msgCaption := att.Link.Title + "\n" + att.Link.Description + "\n" + att.Link.URL + "\n" + appendix
-					send("photo", users, msgCaption, b)
+					send("photo", users, msgCaption, b, "")
 				}
 
 			} else {
 				var desc = ""
 				desc = att.Link.Title + "\n" + att.Link.URL + "\n" + appendix
-				send("link", users, desc, nil)
+				send("link", users, desc, nil, "")
 			}
 		}
 	}
@@ -535,7 +537,7 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
 		//post video
 		vidb := httputils.HttpGet(video, nil)
 		if vidb != nil {
-			send("video", users, appendix, vidb)
+			send("video", users, appendix, vidb, video)
 		} else {
 			return
 		}
@@ -554,9 +556,9 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
 		if b != nil {
 
 			if strings.HasSuffix(photo, ".gif") {
-				send("doc", users, caption, b)
+				send("doc", users, caption, b, photo)
 			} else {
-				send("photo", users, caption, b)
+				send("photo", users, caption, b, photo)
 			}
 		}
 	} else {
@@ -564,9 +566,9 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
 		msgtxt := "*" + title + "*\n" + description + appendix
 
 		if len([]rune(msgtxt)) < 250 {
-			send("link", users, msgtxt, nil)
+			send("link", users, msgtxt, nil, "")
 		} else {
-			send("txt", users, msgtxt, nil)
+			send("txt", users, msgtxt, nil, "")
 		}
 	}
 }
