@@ -121,14 +121,20 @@ func send(msgtype string, users map[int64]bool, txt string, bytes []byte, fileNa
 	return msgs
 }
 
-func checkErr(msg tgbotapi.Message, err error, userId int64) {
+func checkErr(m tgMessage, msg tgbotapi.Message, err error, userId int64) {
 	if err != nil {
 		s := err.Error()
 		if strings.Contains(s, "orbidden") {
 			forbidden.Set(strconv.FormatInt(userId, 10), true)
 		} else {
-			fmt.Printf("Error: msg:%+v userId:%d err:%s", nil, userId, s)
+			if strings.Contains(s, "Too Many") {
+				fmt.Printf("Error: msg:%+v userId:%d err:%s\n", m, userId, s)
+				time.Sleep(60 * time.Second)
+			} else {
+				fmt.Printf("Error: msg:%+v userId:%d err:%s\n", m, userId, s)
+			}
 		}
+
 	}
 }
 
@@ -145,33 +151,33 @@ func sendMsg(msg tgMessage) {
 			m.DisableNotification = true
 			m.Caption = msg.txt
 			res, err := bot.Send(m)
-			checkErr(res, err, userId)
+			checkErr(msg, res, err, userId)
 		case "video":
 			m := tgbotapi.NewVideoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
 			m.DisableNotification = true
 			m.Caption = msg.txt
 			res, err := bot.Send(m)
-			checkErr(res, err, userId)
+			checkErr(msg, res, err, userId)
 		case "doc":
 			m := tgbotapi.NewDocumentUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
 			m.DisableNotification = true
 			m.Caption = msg.txt
 			res, err := bot.Send(m)
-			checkErr(res, err, userId)
+			checkErr(msg, res, err, userId)
 		case "link":
 			m := tgbotapi.NewMessage(userId, msg.txt)
 			m.DisableNotification = true
 			m.DisableWebPagePreview = false
 			m.ParseMode = "Markdown"
 			res, err := bot.Send(m)
-			checkErr(res, err, userId)
+			checkErr(msg, res, err, userId)
 		default:
 			//txt
 			m := tgbotapi.NewMessage(userId, msg.txt)
 			m.DisableNotification = true
 			m.DisableWebPagePreview = true
 			res, err := bot.Send(m)
-			checkErr(res, err, userId)
+			checkErr(msg, res, err, userId)
 		}
 
 		lastMessageTimes.Set(strconv.FormatInt(userId, 10), time.Now().UnixNano())
