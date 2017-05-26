@@ -125,13 +125,14 @@ func checkErr(m tgMessage, msg tgbotapi.Message, err error, userId int64) {
 	if err != nil {
 		s := err.Error()
 		if strings.Contains(s, "orbidden") {
+			fmt.Printf("orbidden %d\n", userId)
 			forbidden.Set(strconv.FormatInt(userId, 10), true)
 		} else {
 			if strings.Contains(s, "Too Many") {
-				fmt.Printf("Error: msg:%+v userId:%d err:%s\n", m, userId, s)
+				fmt.Printf("Error: msg:%+v userId:%d err:%s\n", m.msgtype, userId, s)
 				time.Sleep(60 * time.Second)
 			} else {
-				fmt.Printf("Error: msg:%+v userId:%d err:%s\n", m, userId, s)
+				fmt.Printf("Error: msgty:%s fn:%s txt:%s userId:%d err:%s\n", m.msgtype, m.fileName, m.txt, userId, s)
 			}
 		}
 
@@ -184,6 +185,7 @@ func sendMsg(msg tgMessage) {
 		lastMessageTimes.Set("0", time.Now().UnixNano())
 		fmt.Printf("%s Ok Userid:%d\n", time.Now().Format("15:04:05"), userId)
 		//break
+		time.Sleep(10 * time.Millisecond)
 	}
 	//}
 }
@@ -417,10 +419,10 @@ func userCanReceiveMessage(userId int64) (result bool) {
 			t, ok := lastMessageTimes.Get("0")
 			result = !ok || t.(int64)+(int64(time.Second/30)) <= time.Now().UnixNano()
 		}
-		if result {
+		if result == true {
 			break
 		} else {
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 	return
@@ -498,7 +500,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) []tgMessage
 						//post video
 						vidb := httputils.HttpGet(s, nil)
 						if vidb != nil {
-							for _, m := range send("video", users, appendix, vidb, s) {
+							for _, m := range send("video", users, appendix, vidb, "1.mp4") {
 								msgs = append(msgs, m)
 							}
 						}
@@ -598,7 +600,7 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) []tgMessage {
 		//post video
 		vidb := httputils.HttpGet(video, nil)
 		if vidb != nil {
-			for _, m := range send("video", users, appendix, vidb, video) {
+			for _, m := range send("video", users, appendix, vidb, "video.mp4") {
 				msgs = append(msgs, m)
 			}
 		} else {
@@ -619,11 +621,11 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) []tgMessage {
 		if b != nil {
 
 			if strings.HasSuffix(photo, ".gif") {
-				for _, m := range send("doc", users, caption, b, photo) {
+				for _, m := range send("doc", users, caption, b, "photo.gif") {
 					msgs = append(msgs, m)
 				}
 			} else {
-				for _, m := range send("photo", users, caption, b, photo) {
+				for _, m := range send("photo", users, caption, b, "photo.png") {
 					msgs = append(msgs, m)
 				}
 			}
