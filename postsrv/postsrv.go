@@ -57,9 +57,9 @@ var (
 	lastMessageTimes = cmap.New()
 	// Здесь будем хранить время последней отправки сообщения в целом
 	//lastMessageTime int64
-	timer      = time.NewTicker(time.Second / 30)
-	forbidden  = cmap.New()
-	chQueueMsg = make(chan tgMessage, 100000)
+	timer     = time.NewTicker(time.Second / 30)
+	forbidden = cmap.New()
+	//chQueueMsg = make(chan tgMessage, 100000)
 )
 
 func initBot() {
@@ -86,7 +86,7 @@ func main() {
 	//parse()
 	//log.Println("end")
 
-	go popQueueMsg()
+	//go popQueueMsg()
 	go forever()
 	select {} // block forever
 }
@@ -95,25 +95,13 @@ func forever() {
 	for {
 		fmt.Printf("%v+\n", time.Now())
 		parse()
-		time.Sleep(120 * time.Second)
+		fmt.Printf("Sleep")
+		time.Sleep(300 * time.Second)
 	}
 }
 
-func popQueueMsg() {
-
-	for {
-		select {
-		case msg := <-chQueueMsg:
-			sendMsg(msg)
-		}
-	}
-	//for msg := range chQueueMsg {
-	//sendMsg(msg)
-	//time.Sleep(100 * time.Millisecond)
-	//}
-}
-
-func send(msgtype string, users map[int64]bool, txt string, bytes []byte, fileName string) {
+func send(msgtype string, users map[int64]bool, txt string, bytes []byte, fileName string) []tgMessage {
+	msgs := make([]tgMessage, 0, 0)
 	for user := range users {
 		_, forbid := forbidden.Get(strconv.FormatInt(user, 10))
 		if forbid {
@@ -127,8 +115,10 @@ func send(msgtype string, users map[int64]bool, txt string, bytes []byte, fileNa
 			fileName: fileName,
 		}
 		//go sendMsg(msg)
-		chQueueMsg <- msg
+		//chQueueMsg <- msg
+		msgs = append(msgs, msg)
 	}
+	return msgs
 }
 
 func checkErr(msg tgbotapi.Message, err error, userId int64) {
@@ -222,7 +212,7 @@ func parse() {
 	chFeedJobs := make(chan feedJob, len(jobs))
 	//chFeedResults := make(chan bool, len(jobs))
 	//workers
-	for w := 1; w <= 3; w++ {
+	for w := 1; w <= 1; w++ {
 		go workerFeed(w, chFeedJobs)
 	}
 
@@ -231,13 +221,7 @@ func parse() {
 	}
 	//all jobs send
 	close(chFeedJobs)
-
 	log.Println("jobs send")
-	//for r := 0; r < len(jobs); r++ {
-	//	res := <-feedResults
-	//	fmt.Println("finished with res:", res)
-	//}
-	//close(feedResults)
 
 	time.Sleep(time.Duration(10) * time.Second)
 	log.Println("feed done")
@@ -261,6 +245,13 @@ func parse() {
 	}
 	time.Sleep(30 * time.Second)
 
+}
+
+func workerMsg(msgs <-chan tgMessage) {
+	for msg := range msgs {
+		m := msg
+		sendMsg(m)
+	}
 }
 
 func workerFeed(id int, jobs <-chan feedJob) {
@@ -363,7 +354,20 @@ func getPubPosts(domain vkapi.Group, users map[int64]bool) {
 			// no text no attachments
 			continue
 		}
-		pubpost(domain, post, users)
+		msgs := pubpost(domain, post, users)
+
+		chMsgs := make(chan tgMessage, len(msgs))
+		//workers
+		go workerMsg(chMsgs)
+
+		for _, msg := range msgs {
+			chMsgs <- msg
+		}
+		//all jobs send
+		close(chMsgs)
+
+		log.Println("msgs pub send")
+
 	}
 }
 
@@ -416,9 +420,10 @@ func userCanReceiveMessage(userId int64) (result bool) {
 	return
 }
 
-func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
+func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) []tgMessage {
+	msgs := make([]tgMessage, 0, 0)
 	if len(users) == 0 {
-		return
+		return msgs
 	}
 	fmt.Printf("%s domain:%s Post:%d\n", time.Now().Format("15:04:05"), domain.ScreenName, p.Id)
 	var t = strings.Replace(p.Text, "&lt;br&gt;", "\n", -1)
@@ -430,7 +435,9 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 
 	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
 	if len(p.Attachments) == 0 || len([]rune(t)) > 200 {
-		send("txt", users, t+appendix, nil, "")
+		for _, m := range send("txt", users, t+appendix, nil, "") {
+			msgs = append(msgs, m)
+		}
 		t = ""
 	}
 	for i := range p.Attachments {
@@ -455,13 +462,17 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 				} else {
 					photoCaption = appendix
 				}
-				send("photo", users, photoCaption, b, photo)
+				for _, m := range send("photo", users, photoCaption, b, photo) {
+					msgs = append(msgs, m)
+				}
 			}
 		case "video":
 			urlv := fmt.Sprintf("https://vk.com/video%d_%d", att.Video.OwnerID, att.Video.ID)
 			if att.Video.Duration > 600 {
 				//send url
-				send("txt", users, urlv+"\n"+appendix, nil, "")
+				for _, m := range send("txt", users, urlv+"\n"+appendix, nil, "") {
+					msgs = append(msgs, m)
+				}
 				continue
 			}
 			b := httputils.HttpGet(urlv, nil)
@@ -481,7 +492,9 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 						//post video
 						vidb := httputils.HttpGet(s, nil)
 						if vidb != nil {
-							send("video", users, appendix, vidb, s)
+							for _, m := range send("video", users, appendix, vidb, s) {
+								msgs = append(msgs, m)
+							}
 						}
 
 					}
@@ -490,7 +503,9 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 		case "doc":
 			b := httputils.HttpGet(att.Doc.URL, nil)
 			if b != nil {
-				send("doc", users, appendix, b, "tmp."+att.Doc.Ext)
+				for _, m := range send("doc", users, appendix, b, "tmp."+att.Doc.Ext) {
+					msgs = append(msgs, m)
+				}
 			}
 		case "link":
 			if att.Link.Photo.Photo604 != "" && att.Link.Photo.Width > 400 && att.Link.Photo.Height > 400 {
@@ -498,68 +513,25 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 				b := httputils.HttpGet(att.Link.Photo.Photo604, nil)
 				if b != nil {
 					msgCaption := att.Link.Title + "\n" + att.Link.Description + "\n" + att.Link.URL + "\n" + appendix
-					send("photo", users, msgCaption, b, "")
+					for _, m := range send("photo", users, msgCaption, b, "") {
+						msgs = append(msgs, m)
+					}
 				}
 
 			} else {
 				var desc = ""
 				desc = att.Link.Title + "\n" + att.Link.URL + "\n" + appendix
-				send("link", users, desc, nil, "")
+				for _, m := range send("link", users, desc, nil, "") {
+					msgs = append(msgs, m)
+				}
 			}
 		}
 	}
-
+	return msgs
 }
 
-func getFeedPosts(link string, users map[int64]bool) bool {
-
-	var defHeaders = make(map[string]string)
-	defHeaders["User-Agent"] = "script::recoilme:v1"
-	defHeaders["Authorization"] = "Client-ID 4191ffe3736cfcb"
-	b := httputils.HttpGet(link, defHeaders)
-	if b == nil {
-		return false
-	}
-	fp := gofeed.NewParser()
-	feed, err := fp.Parse(bytes.NewReader(b))
-	if err != nil {
-		return false
-	}
-
-	var last = len(feed.Items) - 1
-	if last > 10 {
-		last = 10
-	}
-	for i := range feed.Items {
-		if i > last {
-			break
-		}
-		item := feed.Items[last-i]
-
-		key := GetMD5Hash(link) + "_" + GetMD5Hash(item.Link)
-		body := httputils.HttpGet(params.Links+key, nil)
-		if body != nil {
-			continue
-		}
-		// pub feed
-		b, err := json.Marshal(item)
-		if err != nil {
-			continue
-		}
-		httputils.HttpPut(params.Links+key, nil, b)
-		pubFeed(link, item, users)
-
-	}
-	return true
-}
-
-func GetMD5Hash(text string) string {
-	hash := md5.Sum([]byte(text))
-	return hex.EncodeToString(hash[:])
-}
-
-func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
-
+func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) []tgMessage {
+	msgs := make([]tgMessage, 0, 0)
 	fmt.Printf("%s Feed: %s\n", time.Now().Format("15:04:05"), p.Link)
 	//var vkcnt int64 = -1001067277325 //myakotka
 	//log.Println("pubpost", p.GUID)
@@ -620,9 +592,11 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
 		//post video
 		vidb := httputils.HttpGet(video, nil)
 		if vidb != nil {
-			send("video", users, appendix, vidb, video)
+			for _, m := range send("video", users, appendix, vidb, video) {
+				msgs = append(msgs, m)
+			}
 		} else {
-			return
+			return msgs
 		}
 
 	}
@@ -639,9 +613,13 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
 		if b != nil {
 
 			if strings.HasSuffix(photo, ".gif") {
-				send("doc", users, caption, b, photo)
+				for _, m := range send("doc", users, caption, b, photo) {
+					msgs = append(msgs, m)
+				}
 			} else {
-				send("photo", users, caption, b, photo)
+				for _, m := range send("photo", users, caption, b, photo) {
+					msgs = append(msgs, m)
+				}
 			}
 		}
 	} else {
@@ -649,11 +627,73 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
 		msgtxt := "*" + title + "*\n" + description + appendix
 
 		//if len([]rune(msgtxt)) < 250 {
-		send("link", users, msgtxt, nil, "")
+		for _, m := range send("link", users, msgtxt, nil, "") {
+			msgs = append(msgs, m)
+		}
 		//} else {
 		//send("txt", users, msgtxt, nil, "")
 		//}
 	}
+	return msgs
+}
+
+func getFeedPosts(link string, users map[int64]bool) bool {
+
+	var defHeaders = make(map[string]string)
+	defHeaders["User-Agent"] = "script::recoilme:v1"
+	defHeaders["Authorization"] = "Client-ID 4191ffe3736cfcb"
+	b := httputils.HttpGet(link, defHeaders)
+	if b == nil {
+		return false
+	}
+	fp := gofeed.NewParser()
+	feed, err := fp.Parse(bytes.NewReader(b))
+	if err != nil {
+		return false
+	}
+
+	var last = len(feed.Items) - 1
+	if last > 10 {
+		last = 10
+	}
+	for i := range feed.Items {
+		if i > last {
+			break
+		}
+		item := feed.Items[last-i]
+
+		key := GetMD5Hash(link) + "_" + GetMD5Hash(item.Link)
+		body := httputils.HttpGet(params.Links+key, nil)
+		if body != nil {
+			continue
+		}
+		// pub feed
+		b, err := json.Marshal(item)
+		if err != nil {
+			continue
+		}
+		httputils.HttpPut(params.Links+key, nil, b)
+		msgs := pubFeed(link, item, users)
+
+		chMsgs := make(chan tgMessage, len(msgs))
+		//workers
+		go workerMsg(chMsgs)
+
+		for _, msg := range msgs {
+			chMsgs <- msg
+		}
+		//all jobs send
+		close(chMsgs)
+
+		log.Println("msgs send")
+
+	}
+	return true
+}
+
+func GetMD5Hash(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
 }
 
 func extractLinks(s string) (links []string) {
