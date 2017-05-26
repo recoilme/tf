@@ -77,24 +77,25 @@ func main() {
 }
 
 /*
-Output
-2017/05/25 19:24:25 Start
-2017/05/25 19:24:25 jobs send
+2017/05/25 20:09:10 Start
+2017/05/25 20:09:10 jobs send
 worker 3 processing job http://code.jquery.com/jquery-1.9.1.min.js
 worker 1 processing job asd
 worker 2 processing job http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.9.1.min.js
 worker 1 processing job 111
-finished with res: asd
-finished with res: http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.9.1.min.js
+finished with res:
 worker 2 processing job http://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js
+finished with res: /*! jQuery
 worker 3 processing job http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
-finished with res: http://code.jquery.com/jquery-1.9.1.min.js
+finished with res: /*! jQuery
 worker 1 processing job [htym
-finished with res: 111
-worker 2 processing job weqwe
-finished with res: http://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js
-finished with res: http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
-finished with res: [htym
-finished with res: weqwe
-2017/05/25 19:24:42 Done
+finished with res:
+worker 2 processing job http://example.ru
+finished with res: /*! jQuery
+worker 3 processing job http://www.example34.org/
+finished with res: /*! jQuery
+finished with res:
+finished with res: <!DOCTYPE
+finished with res:
+2017/05/25 20:09:23 Done
 */

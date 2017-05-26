@@ -46,6 +46,16 @@ type ShortUrl struct {
 	LongURL string `json:"longUrl"`
 }
 
+type feedJob struct {
+	link  string
+	users map[int64]bool
+}
+
+type pubJob struct {
+	domain vkapi.Group
+	users  map[int64]bool
+}
+
 var (
 	bot *tgbotapi.BotAPI
 	// Здесь будем хранить время последней отправки сообщения для каждого пользователя
@@ -79,6 +89,7 @@ func main() {
 	initBot()
 	//parse()
 	//log.Println("end")
+
 	go forever()
 	select {} // block forever
 }
@@ -171,6 +182,54 @@ func sendMsg(msg tgMessage) {
 
 func parse() {
 
+	feeds := getFeedNames()
+
+	//arr of job
+	jobs := make([]feedJob, 0, 0)
+
+	for _, hash := range feeds {
+		//log.Println("getfeed", url, hash)
+		b := httputils.HttpGet(params.Feeds+hash, nil)
+		if b != nil {
+			url := string(b)
+			feedUsers := feedUsers(hash)
+			if len(feedUsers) == 0 {
+				continue
+			}
+			//log.Println("getfeed", url)
+			//getFeedPosts(url, feedUsers)
+			feedJob := feedJob{
+				link:  url,
+				users: feedUsers,
+			}
+			jobs = append(jobs, feedJob)
+		}
+	}
+
+	//channels
+	feedJobs := make(chan feedJob, len(jobs))
+	feedResults := make(chan bool, len(jobs))
+	//workers
+	for w := 1; w <= 3; w++ {
+		go feedWorker(w, feedJobs, feedResults)
+	}
+
+	for _, job := range jobs {
+		feedJobs <- job
+	}
+	//all jobs send
+	close(feedJobs)
+
+	log.Println("jobs send")
+	for r := 0; r < len(jobs); r++ {
+		res := <-feedResults
+		fmt.Println("finished with res:", res)
+	}
+	close(feedResults)
+
+	time.Sleep(time.Duration(10) * time.Second)
+	log.Println("feed done")
+
 	publics := getPubNames()
 	for _, pubName := range publics {
 		b := httputils.HttpGet(params.Publics+pubName, nil)
@@ -189,19 +248,23 @@ func parse() {
 		}
 	}
 	time.Sleep(30 * time.Second)
-	feeds := getFeedNames()
-	for _, hash := range feeds {
-		//log.Println("getfeed", url, hash)
-		b := httputils.HttpGet(params.Feeds+hash, nil)
-		if b != nil {
-			url := string(b)
-			feedUsers := feedUsers(hash)
-			if len(feedUsers) == 0 {
-				continue
-			}
-			//log.Println("getfeed", url)
-			getFeedPosts(url, feedUsers)
-		}
+
+}
+
+func feedWorker(id int, jobs <-chan feedJob, results chan<- bool) {
+
+	for job := range jobs {
+
+		fmt.Println("worker", id, "processing job")
+
+		feed := job
+		link := feed.link
+		users := feed.users
+		result := getFeedPosts(link, users)
+
+		//rate limits wor workers
+		time.Sleep(time.Duration(1) * time.Second)
+		results <- result
 	}
 
 }
@@ -429,19 +492,19 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) {
 
 }
 
-func getFeedPosts(link string, users map[int64]bool) {
+func getFeedPosts(link string, users map[int64]bool) bool {
 
 	var defHeaders = make(map[string]string)
 	defHeaders["User-Agent"] = "script::recoilme:v1"
 	defHeaders["Authorization"] = "Client-ID 4191ffe3736cfcb"
 	b := httputils.HttpGet(link, defHeaders)
 	if b == nil {
-		return
+		return false
 	}
 	fp := gofeed.NewParser()
 	feed, err := fp.Parse(bytes.NewReader(b))
 	if err != nil {
-		return
+		return false
 	}
 
 	var last = len(feed.Items) - 1
@@ -468,6 +531,7 @@ func getFeedPosts(link string, users map[int64]bool) {
 		pubFeed(link, item, users)
 
 	}
+	return true
 }
 
 func GetMD5Hash(text string) string {
