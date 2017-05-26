@@ -100,10 +100,17 @@ func forever() {
 }
 
 func popQueueMsg() {
-	for msg := range chQueueMsg {
-		sendMsg(msg)
-		time.Sleep(100 * time.Millisecond)
+
+	for {
+		select {
+		case msg := <-chQueueMsg:
+			sendMsg(msg)
+		}
 	}
+	//for msg := range chQueueMsg {
+	//sendMsg(msg)
+	//time.Sleep(100 * time.Millisecond)
+	//}
 }
 
 func send(msgtype string, users map[int64]bool, txt string, bytes []byte, fileName string) {
@@ -137,52 +144,52 @@ func checkErr(msg tgbotapi.Message, err error, userId int64) {
 
 func sendMsg(msg tgMessage) {
 
-	for range timer.C {
-		userId := msg.userId
-		if userCanReceiveMessage(userId) {
-			//log.Println(msg.msgtype)
+	//for { //range timer.C {
+	userId := msg.userId
+	if userCanReceiveMessage(userId) {
+		//log.Println(msg.msgtype)
 
-			switch msg.msgtype {
-			case "photo":
-				m := tgbotapi.NewPhotoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
-				m.DisableNotification = true
-				m.Caption = msg.txt
-				res, err := bot.Send(m)
-				checkErr(res, err, userId)
-			case "video":
-				m := tgbotapi.NewVideoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
-				m.DisableNotification = true
-				m.Caption = msg.txt
-				res, err := bot.Send(m)
-				checkErr(res, err, userId)
-			case "doc":
-				m := tgbotapi.NewDocumentUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
-				m.DisableNotification = true
-				m.Caption = msg.txt
-				res, err := bot.Send(m)
-				checkErr(res, err, userId)
-			case "link":
-				m := tgbotapi.NewMessage(userId, msg.txt)
-				m.DisableNotification = true
-				m.DisableWebPagePreview = false
-				m.ParseMode = "Markdown"
-				res, err := bot.Send(m)
-				checkErr(res, err, userId)
-			default:
-				//txt
-				m := tgbotapi.NewMessage(userId, msg.txt)
-				m.DisableNotification = true
-				m.DisableWebPagePreview = true
-				res, err := bot.Send(m)
-				checkErr(res, err, userId)
-			}
-
-			lastMessageTimes.Set(strconv.FormatInt(userId, 10), time.Now().UnixNano())
-			lastMessageTimes.Set("0", time.Now().UnixNano())
-			fmt.Printf("%s Ok\n", time.Now().Format("15:04:05"))
-			break
+		switch msg.msgtype {
+		case "photo":
+			m := tgbotapi.NewPhotoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
+			m.DisableNotification = true
+			m.Caption = msg.txt
+			res, err := bot.Send(m)
+			checkErr(res, err, userId)
+		case "video":
+			m := tgbotapi.NewVideoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
+			m.DisableNotification = true
+			m.Caption = msg.txt
+			res, err := bot.Send(m)
+			checkErr(res, err, userId)
+		case "doc":
+			m := tgbotapi.NewDocumentUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
+			m.DisableNotification = true
+			m.Caption = msg.txt
+			res, err := bot.Send(m)
+			checkErr(res, err, userId)
+		case "link":
+			m := tgbotapi.NewMessage(userId, msg.txt)
+			m.DisableNotification = true
+			m.DisableWebPagePreview = false
+			m.ParseMode = "Markdown"
+			res, err := bot.Send(m)
+			checkErr(res, err, userId)
+		default:
+			//txt
+			m := tgbotapi.NewMessage(userId, msg.txt)
+			m.DisableNotification = true
+			m.DisableWebPagePreview = true
+			res, err := bot.Send(m)
+			checkErr(res, err, userId)
 		}
+
+		lastMessageTimes.Set(strconv.FormatInt(userId, 10), time.Now().UnixNano())
+		lastMessageTimes.Set("0", time.Now().UnixNano())
+		fmt.Printf("%s Ok Userid:%d\n", time.Now().Format("15:04:05"), userId)
+		//break
 	}
+	//}
 }
 
 func parse() {

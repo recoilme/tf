@@ -50,7 +50,7 @@ func init() {
 		log.SetOutput(ioutil.Discard)
 		Telefeedfile = "telefeed.bot"
 	} else {
-		//log.SetOutput(ioutil.Discard)
+		log.SetOutput(ioutil.Discard)
 
 	}
 }
