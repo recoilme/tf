@@ -40,7 +40,7 @@ type tgMessage struct {
 	fileName string
 }
 
-type ShortUrl struct {
+type shortUrl struct {
 	Kind    string `json:"kind"`
 	ID      string `json:"id"`
 	LongURL string `json:"longUrl"`
@@ -51,19 +51,15 @@ type feedJob struct {
 	users map[int64]bool
 }
 
-type pubJob struct {
-	domain vkapi.Group
-	users  map[int64]bool
-}
-
 var (
 	bot *tgbotapi.BotAPI
 	// Здесь будем хранить время последней отправки сообщения для каждого пользователя
 	lastMessageTimes = cmap.New()
 	// Здесь будем хранить время последней отправки сообщения в целом
-	lastMessageTime int64
-	timer           = time.NewTicker(time.Second / 30)
-	forbidden       = cmap.New()
+	//lastMessageTime int64
+	timer      = time.NewTicker(time.Second / 30)
+	forbidden  = cmap.New()
+	chMessages = make(chan tgMessage, 10)
 )
 
 func initBot() {
@@ -90,6 +86,7 @@ func main() {
 	//parse()
 	//log.Println("end")
 
+	go workerMessages(chMessages)
 	go forever()
 	select {} // block forever
 }
@@ -98,7 +95,13 @@ func forever() {
 	for {
 		fmt.Printf("%v+\n", time.Now())
 		parse()
-		time.Sleep(600 * time.Second)
+		time.Sleep(60 * time.Second)
+	}
+}
+
+func workerMessages(msgs <-chan tgMessage) {
+	for msg := range msgs {
+		sendMsg(msg)
 	}
 }
 
@@ -115,7 +118,8 @@ func send(msgtype string, users map[int64]bool, txt string, bytes []byte, fileNa
 			bytes:    bytes,
 			fileName: fileName,
 		}
-		go sendMsg(msg)
+		//go sendMsg(msg)
+		chMessages <- msg
 	}
 }
 
@@ -173,7 +177,7 @@ func sendMsg(msg tgMessage) {
 			}
 
 			lastMessageTimes.Set(strconv.FormatInt(userId, 10), time.Now().UnixNano())
-			lastMessageTime = time.Now().UnixNano()
+			lastMessageTimes.Set("0", time.Now().UnixNano())
 			fmt.Printf("%s Ok\n", time.Now().Format("15:04:05"))
 			break
 		}
@@ -207,25 +211,25 @@ func parse() {
 	}
 
 	//channels
-	feedJobs := make(chan feedJob, len(jobs))
-	feedResults := make(chan bool, len(jobs))
+	chFeedJobs := make(chan feedJob, len(jobs))
+	//chFeedResults := make(chan bool, len(jobs))
 	//workers
 	for w := 1; w <= 3; w++ {
-		go feedWorker(w, feedJobs, feedResults)
+		go workerFeed(w, chFeedJobs)
 	}
 
 	for _, job := range jobs {
-		feedJobs <- job
+		chFeedJobs <- job
 	}
 	//all jobs send
-	close(feedJobs)
+	close(chFeedJobs)
 
 	log.Println("jobs send")
-	for r := 0; r < len(jobs); r++ {
-		res := <-feedResults
-		fmt.Println("finished with res:", res)
-	}
-	close(feedResults)
+	//for r := 0; r < len(jobs); r++ {
+	//	res := <-feedResults
+	//	fmt.Println("finished with res:", res)
+	//}
+	//close(feedResults)
 
 	time.Sleep(time.Duration(10) * time.Second)
 	log.Println("feed done")
@@ -251,20 +255,18 @@ func parse() {
 
 }
 
-func feedWorker(id int, jobs <-chan feedJob, results chan<- bool) {
+func workerFeed(id int, jobs <-chan feedJob) {
 
 	for job := range jobs {
-
-		fmt.Println("worker", id, "processing job")
 
 		feed := job
 		link := feed.link
 		users := feed.users
-		result := getFeedPosts(link, users)
+		getFeedPosts(link, users)
 
 		//rate limits wor workers
 		time.Sleep(time.Duration(1) * time.Second)
-		results <- result
+		//results <- result
 	}
 
 }
@@ -389,10 +391,12 @@ func lastPostIdGet(domain vkapi.Group) int {
 // Проверка может ли уже пользователь получить следующее сообщение
 func userCanReceiveMessage(userId int64) (result bool) {
 	t, ok := lastMessageTimes.Get(strconv.FormatInt(userId, 10))
+
 	result = !ok || t.(int64)+int64(time.Second) <= time.Now().UnixNano()
 	if result == true {
-		//if we may send to this user check al limit
-		result = lastMessageTime+(int64(time.Second/30)) <= time.Now().UnixNano()
+		//if we may send to this user check all limit
+		t, ok := lastMessageTimes.Get("0")
+		result = !ok || t.(int64)+(int64(time.Second/30)) <= time.Now().UnixNano()
 	}
 	return
 }
@@ -756,7 +760,7 @@ func shortenUrl(url string) (id string) {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err == nil {
 			//log.Println(string(body))
-			var sh ShortUrl
+			var sh shortUrl
 			err := json.Unmarshal(body, &sh)
 			if err == nil {
 				id = sh.ID

@@ -40,8 +40,31 @@ func doJob(url string) string {
 	return string(b)
 }
 
+func some(i int, orderd chan int) {
+	orderd <- i
+
+}
+
+func workerorder(ord <-chan int) {
+	for k := range ord {
+		log.Println("order", k)
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+}
+
 func main() {
 	log.Println("Start")
+	orderd := make(chan int, 2)
+	go workerorder(orderd)
+
+	for r := 0; r < 10; r++ {
+		some(r, orderd)
+		some(r*10, orderd)
+	}
+	time.Sleep(time.Duration(20) * time.Second)
+
+	log.Println("Done")
+	return
 
 	urls := []string{
 		"http://code.jquery.com/jquery-1.9.1.min.js",
@@ -72,8 +95,7 @@ func main() {
 		fmt.Println("finished with res:", res)
 	}
 	close(results)
-	time.Sleep(time.Duration(10) * time.Second)
-	log.Println("Done")
+
 }
 
 /*
