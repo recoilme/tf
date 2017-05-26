@@ -59,7 +59,7 @@ var (
 	//lastMessageTime int64
 	timer      = time.NewTicker(time.Second / 30)
 	forbidden  = cmap.New()
-	chMessages = make(chan tgMessage, 10)
+	chQueueMsg = make(chan tgMessage, 100000)
 )
 
 func initBot() {
@@ -86,7 +86,7 @@ func main() {
 	//parse()
 	//log.Println("end")
 
-	go workerMessages(chMessages)
+	go popQueueMsg()
 	go forever()
 	select {} // block forever
 }
@@ -95,13 +95,14 @@ func forever() {
 	for {
 		fmt.Printf("%v+\n", time.Now())
 		parse()
-		time.Sleep(60 * time.Second)
+		time.Sleep(120 * time.Second)
 	}
 }
 
-func workerMessages(msgs <-chan tgMessage) {
-	for msg := range msgs {
+func popQueueMsg() {
+	for msg := range chQueueMsg {
 		sendMsg(msg)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -119,7 +120,7 @@ func send(msgtype string, users map[int64]bool, txt string, bytes []byte, fileNa
 			fileName: fileName,
 		}
 		//go sendMsg(msg)
-		chMessages <- msg
+		chQueueMsg <- msg
 	}
 }
 
@@ -390,13 +391,20 @@ func lastPostIdGet(domain vkapi.Group) int {
 
 // Проверка может ли уже пользователь получить следующее сообщение
 func userCanReceiveMessage(userId int64) (result bool) {
-	t, ok := lastMessageTimes.Get(strconv.FormatInt(userId, 10))
+	for {
+		t, ok := lastMessageTimes.Get(strconv.FormatInt(userId, 10))
 
-	result = !ok || t.(int64)+int64(time.Second) <= time.Now().UnixNano()
-	if result == true {
-		//if we may send to this user check all limit
-		t, ok := lastMessageTimes.Get("0")
-		result = !ok || t.(int64)+(int64(time.Second/30)) <= time.Now().UnixNano()
+		result = !ok || t.(int64)+int64(time.Second) <= time.Now().UnixNano()
+		if result == true {
+			//if we may send to this user check all limit
+			t, ok := lastMessageTimes.Get("0")
+			result = !ok || t.(int64)+(int64(time.Second/30)) <= time.Now().UnixNano()
+		}
+		if result {
+			break
+		} else {
+			time.Sleep(20 * time.Millisecond)
+		}
 	}
 	return
 }
@@ -633,11 +641,11 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) {
 		description = trimTo(description, 4000-len([]rune(title))-len([]rune(appendix))-10)
 		msgtxt := "*" + title + "*\n" + description + appendix
 
-		if len([]rune(msgtxt)) < 250 {
-			send("link", users, msgtxt, nil, "")
-		} else {
-			send("txt", users, msgtxt, nil, "")
-		}
+		//if len([]rune(msgtxt)) < 250 {
+		send("link", users, msgtxt, nil, "")
+		//} else {
+		//send("txt", users, msgtxt, nil, "")
+		//}
 	}
 }
 
