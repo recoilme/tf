@@ -150,31 +150,31 @@ func sendMsg(msg tgMessage) {
 		case "photo":
 			m := tgbotapi.NewPhotoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
 			m.DisableNotification = true
-			m.Caption = msg.txt
+			m.Caption = trimTo(msg.txt, 200)
 			res, err := bot.Send(m)
 			checkErr(msg, res, err, userId)
 		case "video":
 			m := tgbotapi.NewVideoUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
 			m.DisableNotification = true
-			m.Caption = msg.txt
+			m.Caption = trimTo(msg.txt, 200)
 			res, err := bot.Send(m)
 			checkErr(msg, res, err, userId)
 		case "doc":
 			m := tgbotapi.NewDocumentUpload(userId, tgbotapi.FileBytes{Name: msg.fileName, Bytes: msg.bytes})
 			m.DisableNotification = true
-			m.Caption = msg.txt
+			m.Caption = trimTo(msg.txt, 200)
 			res, err := bot.Send(m)
 			checkErr(msg, res, err, userId)
 		case "link":
-			m := tgbotapi.NewMessage(userId, msg.txt)
+			m := tgbotapi.NewMessage(userId, trimTo(msg.txt, 4000))
 			m.DisableNotification = true
 			m.DisableWebPagePreview = false
-			m.ParseMode = "Markdown"
+			//m.ParseMode = "Markdown"
 			res, err := bot.Send(m)
 			checkErr(msg, res, err, userId)
 		default:
 			//txt
-			m := tgbotapi.NewMessage(userId, msg.txt)
+			m := tgbotapi.NewMessage(userId, trimTo(msg.txt, 4000))
 			m.DisableNotification = true
 			m.DisableWebPagePreview = true
 			res, err := bot.Send(m)
@@ -632,7 +632,7 @@ func pubFeed(domain string, p *gofeed.Item, users map[int64]bool) []tgMessage {
 		}
 	} else {
 		description = trimTo(description, 4000-len([]rune(title))-len([]rune(appendix))-10)
-		msgtxt := "*" + title + "*\n" + description + appendix
+		msgtxt := title + "\n" + description + appendix
 
 		//if len([]rune(msgtxt)) < 250 {
 		for _, m := range send("link", users, msgtxt, nil, "") {
