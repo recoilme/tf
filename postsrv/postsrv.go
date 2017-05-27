@@ -166,15 +166,15 @@ func sendMsg(msg tgMessage) {
 			res, err := bot.Send(m)
 			checkErr(msg, res, err, userId)
 		case "link":
-			m := tgbotapi.NewMessage(userId, trimTo(msg.txt, 4000))
+			m := tgbotapi.NewMessage(userId, trimTo(msg.txt, 3500))
 			m.DisableNotification = true
 			m.DisableWebPagePreview = false
-			//m.ParseMode = "Markdown"
+			//m.ParseMode = tgbotapi.ModeHTML // "Markdown"
 			res, err := bot.Send(m)
 			checkErr(msg, res, err, userId)
 		default:
 			//txt
-			m := tgbotapi.NewMessage(userId, trimTo(msg.txt, 4000))
+			m := tgbotapi.NewMessage(userId, trimTo(msg.txt, 3500))
 			m.DisableNotification = true
 			m.DisableWebPagePreview = true
 			res, err := bot.Send(m)
@@ -413,11 +413,11 @@ func userCanReceiveMessage(userId int64) (result bool) {
 	for {
 		t, ok := lastMessageTimes.Get(strconv.FormatInt(userId, 10))
 
-		result = !ok || t.(int64)+int64(time.Second) <= time.Now().UnixNano()
+		result = !ok || t.(int64)+int64(1300*time.Millisecond) <= time.Now().UnixNano()
 		if result == true {
 			//if we may send to this user check all limit
 			t, ok := lastMessageTimes.Get("0")
-			result = !ok || t.(int64)+(int64(time.Second/30)) <= time.Now().UnixNano()
+			result = !ok || t.(int64)+(int64(time.Second/20)) <= time.Now().UnixNano()
 		}
 		if result == true {
 			break
@@ -443,7 +443,8 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) []tgMessage
 
 	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
 	if len(p.Attachments) == 0 || len([]rune(t)) > 200 {
-		for _, m := range send("txt", users, t+appendix, nil, "") {
+		msgtxt := trimTo(t, 4000-len([]rune(appendix))-10)
+		for _, m := range send("txt", users, msgtxt, nil, "") {
 			msgs = append(msgs, m)
 		}
 		t = ""
