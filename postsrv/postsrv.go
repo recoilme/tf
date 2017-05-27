@@ -443,7 +443,7 @@ func pubpost(domain vkapi.Group, p vkapi.Post, users map[int64]bool) []tgMessage
 
 	appendix := fmt.Sprintf("#%s 🔗 %s", tag, link)
 	if len(p.Attachments) == 0 || len([]rune(t)) > 200 {
-		msgtxt := trimTo(t, 4000-len([]rune(appendix))-10)
+		msgtxt := trimTo(t, 4000-len([]rune(appendix))-10) + appendix
 		for _, m := range send("txt", users, msgtxt, nil, "") {
 			msgs = append(msgs, m)
 		}
