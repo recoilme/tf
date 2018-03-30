@@ -162,13 +162,8 @@ type Link struct {
 // WallGet return array of Post by domain name
 // get ownerid or screenname as param
 func WallGet(domain interface{}) []Post {
-	//549d16f616cced9143b53d66d28e0a4348e3a452bf026b08f5ef2411ec3c55587c50cdcaa3e77236ac007 //burnnews
-	//fd203e2d8a7a4af5c59ac52a6a297460ab5d4136b2f89c57b399c86e11706a226fc8a521af90f923e63c6 //fontanka
-	//d091f7d5f6e97966aa4d8cf461f01d0e0373d8d83a5f2c52523fd434d72b6d5f895b1ee782bf097e9516e //telefeed //blocked
-	//7f31f1c447cf23d335b02d4d195f22b34249bb4a942f8a86c7594fb10ec29a30e140713f494cfeb882cac //telefeedbot //blocked
-	//e197dc3dc93a61be680b74781b961932b9c99a19430c5c9dd68d863192fcfdd3920c346c29e7558c1a45f //telefeedbot2 //blocked
+
 	//https://oauth.vk.com/authorize?client_id=5589502&scope=groups%2Cwall%2Coffline%2Cphotos%2Cvideos%2Caudios%2Cdocuments&redirect_uri=https://oauth.vk.com/blank.html&display=page&v=5.63&response_type=token
-	//7f31f1c447cf23d335b02d4d195f22b34249bb4a942f8a86c7594fb10ec29a30e140713f494cfeb882cac
 
 	apikey := params.Tokens[rand.Intn(len(params.Tokens))]
 	token := "&access_token=" + apikey
