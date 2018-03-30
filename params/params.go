@@ -161,7 +161,7 @@ var (
 	Telefeedfile = "./telefeed.bot"
 	//Telefeedfile       = "./telefeedtst.bot"
 	ChannelsFatherfile = "./channelsfather.bot"
-	Tokens             = [...]string{"549d16f616cced9143b53d66d28e0a4348e3a452bf026b08f5ef2411ec3c55587c50cdcaa3e77236ac007", "fd203e2d8a7a4af5c59ac52a6a297460ab5d4136b2f89c57b399c86e11706a226fc8a521af90f923e63c6"}
+	Tokens             = [...]string{"token1", "token2"}
 	Stores             = [...]string{"@telefeedcontent1", "@telefeedcontent2", "@telefeedcontent3"}
 	StoreIds           = [...]int64{-1001140338639, -1001144965998, -1001122084977, -1001121449455, -1001147806509, -1001069985583, -1001128095164}
 	GooglKeys          = [...]string{"AIzaSyCTmUsTGqjl7iWJLiJisrejgTNamp7bfIA", "AIzaSyAZaQiAkSmYFZLMjUOxtKOj3R29TPs81X0"}
