@@ -8,8 +8,8 @@ import (
 
 	"strings"
 
-	"bitbucket.org/recoilme/tf/httputils"
-	"bitbucket.org/recoilme/tf/params"
+	"github.com/recoilme/tf/httputils"
+	"github.com/recoilme/tf/params"
 )
 
 type PostResponse struct {
