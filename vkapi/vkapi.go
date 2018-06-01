@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"strings"
 
-	"log"
-
-	"github.com/recoilme/tf/httputils"
-	"github.com/recoilme/tf/params"
+	"bitbucket.org/recoilme/tf/httputils"
+	"bitbucket.org/recoilme/tf/params"
 )
 
 type PostResponse struct {
@@ -25,6 +24,7 @@ type GroupResponse struct {
 }
 
 type Group struct {
+	Id           int    `json:"id"`
 	Gid          int    `json:"gid"`
 	Name         string `json:"name"`
 	ScreenName   string `json:"screen_name"`
@@ -163,9 +163,12 @@ type Link struct {
 // get ownerid or screenname as param
 func WallGet(domain interface{}) []Post {
 
-	//https://oauth.vk.com/authorize?client_id=5589502&scope=groups%2Cwall%2Coffline%2Cphotos%2Cvideos%2Caudios%2Cdocuments&redirect_uri=https://oauth.vk.com/blank.html&display=page&v=5.63&response_type=token
+	//https://oauth.vk.com/authorize?client_id=5586516&scope=groups%2Cwall%2Coffline%2Cphotos%2Cvideos%2Caudios%2Cdocuments&redirect_uri=https://oauth.vk.com/blank.html&display=page&v=5.63&response_type=token
 
+	rand.Seed(time.Now().UnixNano())
 	apikey := params.Tokens[rand.Intn(len(params.Tokens))]
+	//fmt.Println(apikey)
+
 	token := "&access_token=" + apikey
 	var url string
 	//https://api.vk.com/method/wall.get?owner_id=-125698500&v=5.63
@@ -187,6 +190,7 @@ func WallGet(domain interface{}) []Post {
 func PostsGet(url string) []Post {
 	posts := make([]Post, 0, 20)
 	body := httputils.HttpGet(url, nil)
+	//fmt.Println(url)
 	if body != nil {
 		var postRes PostResponse
 		err := json.Unmarshal(body, &postRes)
@@ -203,15 +207,21 @@ func PostsGet(url string) []Post {
 func GroupsGetById(name string) (groups []Group) {
 	if strings.HasPrefix(name, "public") {
 		name = name[len("public"):]
-		log.Println("name", name)
+		//log.Println("name", name)
 	}
-	url := "https://api.vk.com/method/groups.getById?group_id=" + name + "&v=5.63&fields=members_count,description"
+	rand.Seed(time.Now().UnixNano())
+	apikey := params.Tokens[rand.Intn(len(params.Tokens))]
+	token := "&access_token=" + apikey
+	url := "https://api.vk.com/method/groups.getById?group_id=" + name + "&v=5.63&fields=members_count,description,id" + token
 	body := httputils.HttpGet(url, nil)
 	if body != nil {
 		var groupRes GroupResponse
 		err := json.Unmarshal(body, &groupRes)
 		if err == nil {
 			groups = groupRes.Groups
+			for i, group := range groups {
+				groups[i].Gid = group.Id
+			}
 		}
 	}
 	return
